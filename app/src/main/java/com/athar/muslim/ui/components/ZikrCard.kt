@@ -1,15 +1,19 @@
 package com.athar.muslim.ui.components
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -37,36 +41,33 @@ fun ZikrCard(
     val haptics = LocalHapticFeedback.current
     val isDone = remainingCount == 0
 
-    val cardBg by animateColorAsState(
-        targetValue = if (isDone) SkyContainer.copy(alpha = 0.6f) else SkySurface,
-        label = "cardBg"
+    val buttonColor by animateColorAsState(
+        targetValue = if (isDone) BluePrimary else SkyContainer,
+        label = "buttonColor"
     )
-    val borderColor by animateColorAsState(
-        targetValue = if (isDone) BluePrimary.copy(alpha = 0.4f) else SkyAccent,
-        label = "borderColor"
+    val buttonContentColor by animateColorAsState(
+        targetValue = if (isDone) SkySurface else NavyDark,
+        label = "buttonContentColor"
     )
     val progress by animateFloatAsState(
         targetValue = (zikr.count - remainingCount).toFloat() / zikr.count.toFloat(),
         label = "zikrProgress"
     )
 
+    val formattedShareText = "${zikr.text}\n\n— تطبيق أثر مسلم"
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(enabled = !isDone) {
-                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onDecrement()
-            },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = cardBg),
-        border = BorderStroke(1.dp, borderColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isDone) 0.dp else 2.dp)
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = SkySurface),
+        border = BorderStroke(1.dp, SkyAccent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // شريط علوي صغير: عدد التكرار الأصلي + زر نسخ + زر مشاركة
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -77,7 +78,7 @@ fun ZikrCard(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "التكرار: ${zikr.count}",
+                        text = "المطلوب: ${zikr.count}",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -85,53 +86,75 @@ fun ZikrCard(
                     )
                 }
 
-                IconButton(
-                    onClick = {
-                        val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "${zikr.text}\n\n— تطبيق أثر مسلم")
-                        }
-                        context.startActivity(Intent.createChooser(sendIntent, "مشاركة الذكر"))
-                    },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Share,
-                        contentDescription = "مشاركة",
-                        tint = BluePrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("zikr", formattedShareText)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "تم نسخ الذكر", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ContentCopy,
+                            contentDescription = "نسخ",
+                            tint = BluePrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = {
+                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, formattedShareText)
+                            }
+                            context.startActivity(Intent.createChooser(sendIntent, "مشاركة الذكر"))
+                        },
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Share,
+                            contentDescription = "مشاركة",
+                            tint = BluePrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
+            // نص الذكر
             Text(
                 text = zikr.text,
-                fontSize = 19.sp,
-                lineHeight = 32.sp,
+                fontSize = 18.sp,
+                lineHeight = 30.sp,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Medium,
-                color = if (isDone) NavyDark.copy(alpha = 0.55f) else TextBody
+                color = TextBody
             )
 
+            // الفضل أو الفائدة إن وجدت
             if (zikr.benefit.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "✨ ${zikr.benefit}",
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     textAlign = TextAlign.Center,
                     color = BluePrimary
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
+            // شريط التقدم الخاص بالذكر
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
+                    .height(5.dp)
                     .clip(CircleShape),
                 color = BluePrimary,
                 trackColor = SkyContainer,
@@ -139,41 +162,36 @@ fun ZikrCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = if (isDone) BluePrimary else SkyContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (isDone) {
-                        Icon(
-                            imageVector = Icons.Rounded.CheckCircle,
-                            contentDescription = null,
-                            tint = SkySurface,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "اكتمل الذكر",
-                            fontWeight = FontWeight.Bold,
-                            color = SkySurface,
-                            fontSize = 15.sp
-                        )
-                    } else {
-                        Text(
-                            text = "اضغط للتسبيح • المتبقي: $remainingCount",
-                            fontWeight = FontWeight.Bold,
-                            color = NavyDark,
-                            fontSize = 15.sp
-                        )
+            // زر العداد المصغّر (يتلوّن الزر فقط عند الاكتمال)
+            Button(
+                onClick = {
+                    if (!isDone) {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onDecrement()
                     }
-                }
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = buttonColor,
+                    contentColor = buttonContentColor,
+                    disabledContainerColor = BluePrimary,
+                    disabledContentColor = SkySurface
+                ),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
+                modifier = Modifier.height(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (isDone) "اضغط • مكتمل ($remainingCount)" else "اضغط • $remainingCount",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
             }
         }
     }
 }
-
