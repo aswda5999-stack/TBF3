@@ -1,23 +1,25 @@
 package com.athar.muslim
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.Construction
 import androidx.compose.material.icons.rounded.Refresh
@@ -32,15 +34,30 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.athar.muslim.data.AzkarRepository
 import com.athar.muslim.data.HadithRepository
 import com.athar.muslim.model.*
+import com.athar.muslim.notifications.AzkarReminderReceiver
 import com.athar.muslim.ui.components.SkyBottomBar
 import com.athar.muslim.ui.components.SkyHeaderDecor
 import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.components.ZikrCard
 import com.athar.muslim.ui.theme.*
-import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+private enum class PermissionStep {
+    NONE,
+    NOTIFICATIONS,
+    EXACT_ALARM
+}
+
+private fun todayKey(): String {
+    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    return formatter.format(Date())
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,18 +73,18 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AtharMuslimApp() {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("athar_muslim_prefs", Context.MODE_PRIVATE) }
 
     var soundEnabled by remember { mutableStateOf(prefs.getBoolean("sound_enabled", true)) }
     var vibrationEnabled by remember { mutableStateOf(prefs.getBoolean("vibration_enabled", true)) }
+    var remindersEnabled by remember { mutableStateOf(prefs.getBoolean("reminders_enabled", true)) }
     var fontScaleStep by remember { mutableIntStateOf(prefs.getInt("font_scale_step", 1)) }
 
     var selectedTab by remember { mutableStateOf(MainBottomTab.AZKAR) }
+    var selectedAzkarCategory by remember { mutableStateOf<AzkarSubCategory?>(null) }
     var selectedHadithTopic by remember { mutableStateOf<HadithTopic?>(null) }
     var hadithLoadState by remember { mutableStateOf<HadithLoadResult?>(null) }
     var isLoadingHadith by remember { mutableStateOf(false) }
@@ -75,34 +92,99 @@ fun AtharMuslimApp() {
     var showSettingsDialog by remember { mutableStateOf(false) }
 
     val favoriteHadiths = remember { mutableStateMapOf<Int, ZikrItem>() }
-
     val subCategories = AzkarSubCategory.entries
-    val pagerState = rememberPagerState(
-        initialPage = 0,
-        pageCount = { subCategories.size }
-    )
 
-    val currentSubCategory = subCategories[pagerState.currentPage]
-    val currentAzkarList = remember(currentSubCategory) {
-        AzkarRepository.getAzkarByCategory(context, currentSubCategory.key)
+    val currentAzkarList = remember(selectedAzkarCategory) {
+        selectedAzkarCategory?.let { AzkarRepository.getAzkarByCategory(context, it.key) }.orEmpty()
     }
     val duasList = remember { AzkarRepository.getDuas(context) }
 
     val countsMap = remember { mutableStateMapOf<Int, Int>() }
 
-    fun ensureCountsInitialized(list: List<ZikrItem>) {
-        list.forEach { zikrEntry ->
-            if (!countsMap.containsKey(zikrEntry.id)) {
-                countsMap[zikrEntry.id] = zikrEntry.count
+    fun saveCountForItem(itemId: Int, value: Int) {
+        prefs.edit()
+            .putString("counts_day_key", todayKey())
+            .putInt("zikr_count_$itemId", value)
+            .apply()
+    }
+
+    fun resetAllCountsToDefault() {
+        val allItems = subCategories.flatMap { AzkarRepository.getAzkarByCategory(context, it.key) } + duasList
+        val editor = prefs.edit().putString("counts_day_key", todayKey())
+        allItems.forEach { entry ->
+            countsMap[entry.id] = entry.count
+            editor.putInt("zikr_count_${entry.id}", entry.count)
+        }
+        editor.apply()
+    }
+
+    fun syncDailyCounts() {
+        val currentDay = todayKey()
+        val savedDay = prefs.getString("counts_day_key", currentDay)
+        val allItems = subCategories.flatMap { AzkarRepository.getAzkarByCategory(context, it.key) } + duasList
+
+        if (savedDay != currentDay) {
+            // بداية يوم جديد بعد منتصف الليل: تصفير تلقائي يومي
+            val editor = prefs.edit().putString("counts_day_key", currentDay)
+            allItems.forEach { entry ->
+                countsMap[entry.id] = entry.count
+                editor.putInt("zikr_count_${entry.id}", entry.count)
             }
+            editor.apply()
+        } else {
+            val editor = prefs.edit().putString("counts_day_key", currentDay)
+            allItems.forEach { entry ->
+                val stored = prefs.getInt("zikr_count_${entry.id}", entry.count)
+                countsMap[entry.id] = stored
+                if (!prefs.contains("zikr_count_${entry.id}")) {
+                    editor.putInt("zikr_count_${entry.id}", entry.count)
+                }
+            }
+            editor.apply()
+        }
+    }
+
+    // تسلسل طلب الأذونات واحداً تلو الآخر عند التثبيت أو الفتح
+    var permissionStep by remember { mutableStateOf(PermissionStep.NONE) }
+
+    val exactAlarmLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        prefs.edit().putBoolean("exact_alarm_prompted", true).apply()
+        AzkarReminderReceiver.scheduleAllDailyReminders(context)
+        permissionStep = PermissionStep.NONE
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) {
+        prefs.edit().putBoolean("notif_permission_prompted", true).apply()
+        AzkarReminderReceiver.ensureNotificationChannel(context)
+        AzkarReminderReceiver.scheduleAllDailyReminders(context)
+
+        if (!AzkarReminderReceiver.canScheduleExactAlarms(context) &&
+            !prefs.getBoolean("exact_alarm_prompted", false)
+        ) {
+            permissionStep = PermissionStep.EXACT_ALARM
+        } else {
+            permissionStep = PermissionStep.NONE
         }
     }
 
     LaunchedEffect(Unit) {
-        subCategories.forEach { cat ->
-            ensureCountsInitialized(AzkarRepository.getAzkarByCategory(context, cat.key))
+        syncDailyCounts()
+        AzkarReminderReceiver.scheduleAllDailyReminders(context)
+
+        val needsNotifRuntime = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+
+        if (needsNotifRuntime && !prefs.getBoolean("notif_permission_prompted", false)) {
+            permissionStep = PermissionStep.NOTIFICATIONS
+        } else if (!AzkarReminderReceiver.canScheduleExactAlarms(context) &&
+            !prefs.getBoolean("exact_alarm_prompted", false)
+        ) {
+            permissionStep = PermissionStep.EXACT_ALARM
         }
-        ensureCountsInitialized(duasList)
     }
 
     LaunchedEffect(selectedTab, selectedHadithTopic, retryNonce) {
@@ -112,20 +194,143 @@ fun AtharMuslimApp() {
             hadithLoadState = null
             val res = HadithRepository.loadTopicHadiths(topic)
             if (res is HadithLoadResult.Success) {
-                ensureCountsInitialized(res.items)
+                res.items.forEach { entry ->
+                    if (!countsMap.containsKey(entry.id)) {
+                        countsMap[entry.id] = entry.count
+                    }
+                }
             }
             hadithLoadState = res
             isLoadingHadith = false
         }
     }
 
+    // حوار الخطوة الأولى للأذونات: الإشعارات
+    if (permissionStep == PermissionStep.NOTIFICATIONS) {
+        AlertDialog(
+            onDismissRequest = {
+                prefs.edit().putBoolean("notif_permission_prompted", true).apply()
+                permissionStep = if (!AzkarReminderReceiver.canScheduleExactAlarms(context)) {
+                    PermissionStep.EXACT_ALARM
+                } else {
+                    PermissionStep.NONE
+                }
+            },
+            containerColor = SkySurface,
+            shape = RoundedCornerShape(22.dp),
+            title = {
+                Text(
+                    text = "إذن إشعارات الأذكار",
+                    color = NavyDark,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 18.sp
+                )
+            },
+            text = {
+                Text(
+                    text = "اسمح للتطبيق بإرسال إشعارات أذكار الصباح والمساء والنوم لتصلك حتى عند إغلاق الشاشة أو استخدام تطبيق آخر.",
+                    color = TextBody,
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            permissionStep = PermissionStep.EXACT_ALARM
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BlueRoyal)
+                ) {
+                    Text("منح الإذن", color = SkySurface, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        prefs.edit().putBoolean("notif_permission_prompted", true).apply()
+                        permissionStep = if (!AzkarReminderReceiver.canScheduleExactAlarms(context)) {
+                            PermissionStep.EXACT_ALARM
+                        } else {
+                            PermissionStep.NONE
+                        }
+                    }
+                ) {
+                    Text("لاحقاً", color = NavyDark)
+                }
+            }
+        )
+    }
+
+    // حوار الخطوة الثانية للأذونات: المنبهات الدقيقة في الموعد المحدد
+    if (permissionStep == PermissionStep.EXACT_ALARM) {
+        AlertDialog(
+            onDismissRequest = {
+                prefs.edit().putBoolean("exact_alarm_prompted", true).apply()
+                permissionStep = PermissionStep.NONE
+            },
+            containerColor = SkySurface,
+            shape = RoundedCornerShape(22.dp),
+            title = {
+                Text(
+                    text = "إذن التنبيه في الموعد المحدد",
+                    color = NavyDark,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 18.sp
+                )
+            },
+            text = {
+                Text(
+                    text = "لتصل إشعارات الأذكار بدقة في وقتها اليومي حتى في وضع السكون، فعّل خيار المنبهات والتذكيرات من الإعدادات.",
+                    color = TextBody,
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val settingsIntent = AzkarReminderReceiver.createExactAlarmSettingsIntent(context)
+                        if (settingsIntent != null) {
+                            exactAlarmLauncher.launch(settingsIntent)
+                        } else {
+                            AzkarReminderReceiver.scheduleAllDailyReminders(context)
+                            permissionStep = PermissionStep.NONE
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BlueRoyal)
+                ) {
+                    Text("فتح الإعدادات", color = SkySurface, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        prefs.edit().putBoolean("exact_alarm_prompted", true).apply()
+                        permissionStep = PermissionStep.NONE
+                    }
+                ) {
+                    Text("تخطي", color = NavyDark)
+                }
+            }
+        )
+    }
+
     val subtitleBadgeText = when (selectedTab) {
         MainBottomTab.AZKAR -> {
-            val done = currentAzkarList.count { (countsMap[it.id] ?: it.count) == 0 }
-            "${currentSubCategory.title} ($done/${currentAzkarList.size})"
+            val activeCat = selectedAzkarCategory
+            if (activeCat == null) {
+                "أقسام الأذكار"
+            } else {
+                val done = currentAzkarList.count { (countsMap[it.id] ?: it.count) <= 0 }
+                "${activeCat.title} ($done/${currentAzkarList.size})"
+            }
         }
         MainBottomTab.DUA -> {
-            val done = duasList.count { (countsMap[it.id] ?: it.count) == 0 }
+            val done = duasList.count { (countsMap[it.id] ?: it.count) <= 0 }
             "الأدعية المختارة ($done/${duasList.size})"
         }
         MainBottomTab.HADITH -> selectedHadithTopic?.title ?: "أبواب الأحاديث"
@@ -147,7 +352,42 @@ fun AtharMuslimApp() {
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // تبديل صوت النقر
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "إشعارات الأذكار اليومية",
+                                color = NavyDark,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "تذكير الصباح والمساء والنوم حتى في وضع السكون",
+                                color = TextBody.copy(alpha = 0.75f),
+                                fontSize = 12.sp
+                            )
+                        }
+                        Switch(
+                            checked = remindersEnabled,
+                            onCheckedChange = { checked ->
+                                remindersEnabled = checked
+                                prefs.edit().putBoolean("reminders_enabled", checked).apply()
+                                if (checked) {
+                                    AzkarReminderReceiver.scheduleAllDailyReminders(context)
+                                }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = SkySurface,
+                                checkedTrackColor = BlueRoyal
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = SkyBorder.copy(alpha = 0.6f))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -184,7 +424,6 @@ fun AtharMuslimApp() {
 
                     HorizontalDivider(color = SkyBorder.copy(alpha = 0.6f))
 
-                    // تبديل الاهتزاز اللمسي
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -218,7 +457,6 @@ fun AtharMuslimApp() {
 
                     HorizontalDivider(color = SkyBorder.copy(alpha = 0.6f))
 
-                    // حجم خط النصوص
                     Text(
                         text = "حجم خط الأذكار والأحاديث",
                         color = NavyDark,
@@ -259,15 +497,9 @@ fun AtharMuslimApp() {
 
                     HorizontalDivider(color = SkyBorder.copy(alpha = 0.6f))
 
-                    // تصفير جميع العدادات
                     Button(
                         onClick = {
-                            countsMap.keys.toList().forEach { key ->
-                                val original = (subCategories.flatMap {
-                                    AzkarRepository.getAzkarByCategory(context, it.key)
-                                } + duasList).find { it.id == key }?.count ?: 1
-                                countsMap[key] = original
-                            }
+                            resetAllCountsToDefault()
                             showSettingsDialog = false
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = BlueRoyal),
@@ -305,6 +537,9 @@ fun AtharMuslimApp() {
                 selectedTab = selectedTab,
                 onTabSelected = { tab ->
                     selectedTab = tab
+                    if (tab != MainBottomTab.AZKAR) {
+                        selectedAzkarCategory = null
+                    }
                     if (tab != MainBottomTab.HADITH) {
                         selectedHadithTopic = null
                     }
@@ -321,68 +556,66 @@ fun AtharMuslimApp() {
         ) {
             when (selectedTab) {
                 MainBottomTab.AZKAR -> {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        LazyRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp, bottom = 6.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(subCategories.size) { index ->
-                                val cat = subCategories[index]
-                                val isSelected = pagerState.currentPage == index
+                    val activeCat = selectedAzkarCategory
+                    if (activeCat == null) {
+                        // واجهة عمودية موسّعة لأقسام الأذكار
+                        AzkarCategoriesVerticalList(
+                            categories = subCategories,
+                            countsMap = countsMap,
+                            onSelectCategory = { cat -> selectedAzkarCategory = cat }
+                        )
+                    } else {
+                        // عرض جميع أذكار القسم المختار (مثل أذكار الصباح)
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
                                 Surface(
-                                    onClick = {
-                                        scope.launch {
-                                            pagerState.animateScrollToPage(index)
-                                        }
-                                    },
+                                    onClick = { selectedAzkarCategory = null },
                                     shape = RoundedCornerShape(50),
-                                    color = if (isSelected) BlueRoyal else SkySurface,
-                                    border = BorderStroke(
-                                        1.2.dp,
-                                        if (isSelected) GoldAccent else SkyBorder
-                                    ),
-                                    shadowElevation = if (isSelected) 3.dp else 1.dp
+                                    color = SkySurface,
+                                    border = BorderStroke(1.2.dp, SkyBorder)
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         Icon(
-                                            imageVector = cat.icon,
-                                            contentDescription = null,
-                                            tint = if (isSelected) SkySurface else BlueRoyal,
+                                            imageVector = Icons.Rounded.ArrowForward,
+                                            contentDescription = "رجوع",
+                                            tint = BlueRoyal,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Text(
-                                            text = cat.title,
-                                            color = if (isSelected) SkySurface else NavyDark,
+                                            text = "أقسام الأذكار",
+                                            color = NavyDark,
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
                                 }
-                            }
-                        }
 
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxSize()
-                        ) { pageIndex ->
-                            val pageCat = subCategories[pageIndex]
-                            val pageItems = remember(pageCat) {
-                                AzkarRepository.getAzkarByCategory(context, pageCat.key)
+                                Text(
+                                    text = "تصفير تلقائي يومياً منتصف الليل",
+                                    color = BluePrimary,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
+
                             ItemsCardsList(
-                                items = pageItems,
+                                items = currentAzkarList,
                                 countsMap = countsMap,
                                 isZikrMode = true,
                                 soundEnabled = soundEnabled,
                                 vibrationEnabled = vibrationEnabled,
-                                fontScaleStep = fontScaleStep
+                                fontScaleStep = fontScaleStep,
+                                onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
                             )
                         }
                     }
@@ -395,7 +628,8 @@ fun AtharMuslimApp() {
                         isZikrMode = false,
                         soundEnabled = soundEnabled,
                         vibrationEnabled = vibrationEnabled,
-                        fontScaleStep = fontScaleStep
+                        fontScaleStep = fontScaleStep,
+                        onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
                     )
                 }
 
@@ -426,13 +660,135 @@ fun AtharMuslimApp() {
                                 } else {
                                     favoriteHadiths[hadithItem.id] = hadithItem
                                 }
-                            }
+                            },
+                            onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
                         )
                     }
                 }
 
                 MainBottomTab.FOLLOW_US -> {
                     FollowUsCardScreen()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AzkarCategoriesVerticalList(
+    categories: List<AzkarSubCategory>,
+    countsMap: Map<Int, Int>,
+    onSelectCategory: (AzkarSubCategory) -> Unit
+) {
+    val context = LocalContext.current
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 18.dp)
+    ) {
+        items(categories, key = { it.key }) { category ->
+            val catItems = remember(category) {
+                AzkarRepository.getAzkarByCategory(context, category.key)
+            }
+            val totalCount = catItems.size
+            val doneCount = catItems.count { (countsMap[it.id] ?: it.count) <= 0 }
+            val isCategoryCompleted = totalCount > 0 && doneCount >= totalCount
+
+            Card(
+                onClick = { onSelectCategory(category) },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = SkySurface),
+                border = BorderStroke(
+                    1.5.dp,
+                    if (isCategoryCompleted) GoldAccent else SkyBorder
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (isCategoryCompleted) BlueRoyal else SkyContainer,
+                            border = BorderStroke(1.dp, SkyBorder),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = category.icon,
+                                    contentDescription = null,
+                                    tint = if (isCategoryCompleted) SkySurface else BlueRoyal,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = category.title,
+                                    color = NavyDark,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                                if (isCategoryCompleted) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.CheckCircle,
+                                        contentDescription = "مكتمل",
+                                        tint = BlueRoyal,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = category.subtitle,
+                                color = TextBody.copy(alpha = 0.8f),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = if (isCategoryCompleted) BlueRoyal else SkyContainer,
+                            border = BorderStroke(1.dp, SkyBorder)
+                        ) {
+                            Text(
+                                text = if (isCategoryCompleted) "مكتمل $doneCount/$totalCount" else "$doneCount/$totalCount",
+                                color = if (isCategoryCompleted) SkySurface else NavyDark,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Rounded.ChevronLeft,
+                            contentDescription = null,
+                            tint = BlueRoyal,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
         }
@@ -532,7 +888,8 @@ private fun HadithTopicDetailScreen(
     fontScaleStep: Int,
     onBack: () -> Unit,
     onRetry: () -> Unit,
-    onToggleFavorite: (ZikrItem) -> Unit
+    onToggleFavorite: (ZikrItem) -> Unit,
+    onSaveCount: (Int, Int) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -599,7 +956,11 @@ private fun HadithTopicDetailScreen(
                             item = hadithItem,
                             remainingCount = rem,
                             onDecrement = {
-                                if (rem > 0) countsMap[hadithItem.id] = rem - 1
+                                if (rem > 0) {
+                                    val nextVal = rem - 1
+                                    countsMap[hadithItem.id] = nextVal
+                                    onSaveCount(hadithItem.id, nextVal)
+                                }
                             },
                             isZikrMode = false,
                             isFavorite = favoriteMap.containsKey(hadithItem.id),
@@ -649,7 +1010,11 @@ private fun HadithTopicDetailScreen(
                             item = hadithItem,
                             remainingCount = rem,
                             onDecrement = {
-                                if (rem > 0) countsMap[hadithItem.id] = rem - 1
+                                if (rem > 0) {
+                                    val nextVal = rem - 1
+                                    countsMap[hadithItem.id] = nextVal
+                                    onSaveCount(hadithItem.id, nextVal)
+                                }
                             },
                             isZikrMode = false,
                             isFavorite = favoriteMap.containsKey(hadithItem.id),
@@ -715,7 +1080,8 @@ private fun ItemsCardsList(
     isZikrMode: Boolean,
     soundEnabled: Boolean,
     vibrationEnabled: Boolean,
-    fontScaleStep: Int
+    fontScaleStep: Int,
+    onSaveCount: (Int, Int) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -731,7 +1097,9 @@ private fun ItemsCardsList(
                 remainingCount = currentCount,
                 onDecrement = {
                     if (currentCount > 0) {
-                        countsMap[zikrEntry.id] = currentCount - 1
+                        val nextVal = currentCount - 1
+                        countsMap[zikrEntry.id] = nextVal
+                        onSaveCount(zikrEntry.id, nextVal)
                     }
                 },
                 isZikrMode = isZikrMode,
@@ -783,7 +1151,7 @@ private fun FollowUsCardScreen() {
                     border = BorderStroke(1.dp, SkyBorder)
                 ) {
                     Text(
-                        text = "نسخة أثر مسلم • الإصدار 2.1",
+                        text = "نسخة أثر مسلم • الإصدار 2.2",
                         color = NavyDark,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
