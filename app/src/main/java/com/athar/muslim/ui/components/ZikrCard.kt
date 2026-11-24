@@ -5,7 +5,11 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -42,11 +46,13 @@ fun ZikrCard(
     item: ZikrItem,
     remainingCount: Int,
     onDecrement: () -> Unit,
+    isZikrMode: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
-    val isDone = remainingCount == 0
+    val totalCount = item.count.coerceAtLeast(1)
+    val isDone = remainingCount <= 0
 
     val buttonTopColor by animateColorAsState(
         targetValue = if (isDone) BlueRoyal else BluePrimary,
@@ -67,16 +73,16 @@ fun ZikrCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(if (isZikrMode) 18.dp else 22.dp),
         colors = CardDefaults.cardColors(containerColor = SkySurface),
-        border = BorderStroke(1.8.dp, SkyBorder),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        border = BorderStroke(1.5.dp, SkyBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Canvas(modifier = Modifier.matchParentSize()) {
                 val w = size.width
                 val h = size.height
-                val cornerSize = 54.dp.toPx()
+                val cornerSize = if (isZikrMode) 36.dp.toPx() else 54.dp.toPx()
 
                 val rightCorner = Path().apply {
                     moveTo(w, h)
@@ -88,13 +94,7 @@ fun ZikrCard(
                     )
                     close()
                 }
-                drawPath(path = rightCorner, color = SkyOrnament.copy(alpha = 0.55f))
-                drawCircle(
-                    color = SkyBorder.copy(alpha = 0.45f),
-                    radius = 10.dp.toPx(),
-                    center = Offset(w - 18.dp.toPx(), h - 18.dp.toPx()),
-                    style = Stroke(width = 1.5.dp.toPx())
-                )
+                drawPath(path = rightCorner, color = SkyOrnament.copy(alpha = 0.5f))
 
                 val leftCorner = Path().apply {
                     moveTo(0f, h)
@@ -106,33 +106,72 @@ fun ZikrCard(
                     )
                     close()
                 }
-                drawPath(path = leftCorner, color = SkyOrnament.copy(alpha = 0.55f))
-                drawCircle(
-                    color = SkyBorder.copy(alpha = 0.45f),
-                    radius = 10.dp.toPx(),
-                    center = Offset(18.dp.toPx(), h - 18.dp.toPx()),
-                    style = Stroke(width = 1.5.dp.toPx())
-                )
+                drawPath(path = leftCorner, color = SkyOrnament.copy(alpha = 0.5f))
+
+                if (!isZikrMode) {
+                    drawCircle(
+                        color = SkyBorder.copy(alpha = 0.45f),
+                        radius = 10.dp.toPx(),
+                        center = Offset(w - 18.dp.toPx(), h - 18.dp.toPx()),
+                        style = Stroke(width = 1.5.dp.toPx())
+                    )
+                    drawCircle(
+                        color = SkyBorder.copy(alpha = 0.45f),
+                        radius = 10.dp.toPx(),
+                        center = Offset(18.dp.toPx(), h - 18.dp.toPx()),
+                        style = Stroke(width = 1.5.dp.toPx())
+                    )
+                }
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            if (isZikrMode) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = item.text,
+                        color = TextBody,
+                        fontSize = 17.5.sp,
+                        lineHeight = 29.sp,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (item.benefit.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = SkyContainer.copy(alpha = 0.72f)
+                        ) {
+                            Text(
+                                text = "✨ ${item.benefit}",
+                                color = NavyDark,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // صف الأزرار أسفل الذكر: نسخ + مشاركة + زر اضغط / مكتمل (3/3)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Surface(
                             onClick = {
                                 val clipboard =
                                     context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText("athar_zikr", shareContent))
-                                Toast.makeText(context, "تم نسخ النص", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "تم نسخ الذكر", Toast.LENGTH_SHORT).show()
                             },
                             shape = CircleShape,
                             color = SkyContainer,
@@ -144,10 +183,12 @@ fun ZikrCard(
                                     imageVector = Icons.Rounded.ContentCopy,
                                     contentDescription = "نسخ",
                                     tint = BlueRoyal,
-                                    modifier = Modifier.size(17.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
+
+                        Spacer(modifier = Modifier.width(8.dp))
 
                         Surface(
                             onClick = {
@@ -155,7 +196,7 @@ fun ZikrCard(
                                     type = "text/plain"
                                     putExtra(Intent.EXTRA_TEXT, shareContent)
                                 }
-                                context.startActivity(Intent.createChooser(intent, "مشاركة"))
+                                context.startActivity(Intent.createChooser(intent, "مشاركة الذكر"))
                             },
                             shape = CircleShape,
                             color = SkyContainer,
@@ -167,122 +208,255 @@ fun ZikrCard(
                                     imageVector = Icons.Rounded.Share,
                                     contentDescription = "مشاركة",
                                     tint = BlueRoyal,
-                                    modifier = Modifier.size(17.dp)
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Surface(
+                            onClick = {
+                                if (!isDone) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onDecrement()
+                                }
+                            },
+                            shape = RoundedCornerShape(50),
+                            border = BorderStroke(1.2.dp, if (isDone) GoldAccent else SkyBorder),
+                            shadowElevation = if (isDone) 3.dp else 1.dp,
+                            color = Color.Transparent,
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .height(36.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(buttonTopColor, buttonBottomColor)
+                                        )
+                                    )
+                                    .padding(horizontal = 14.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                ) {
+                                    AnimatedVisibility(
+                                        visible = isDone,
+                                        enter = fadeIn(animationSpec = tween(220)),
+                                        exit = fadeOut(animationSpec = tween(180))
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Check,
+                                            contentDescription = null,
+                                            tint = SkySurface,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+
+                                    AnimatedVisibility(
+                                        visible = !isDone,
+                                        enter = fadeIn(animationSpec = tween(220)),
+                                        exit = fadeOut(animationSpec = tween(180))
+                                    ) {
+                                        Text(
+                                            text = "اضغط • $remainingCount",
+                                            color = SkySurface,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+
+                                    AnimatedVisibility(
+                                        visible = isDone,
+                                        enter = fadeIn(animationSpec = tween(250)),
+                                        exit = fadeOut(animationSpec = tween(180))
+                                    ) {
+                                        Text(
+                                            text = "مكتمل $totalCount/$totalCount",
+                                            color = SkySurface,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(
+                                onClick = {
+                                    val clipboard =
+                                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("athar_zikr", shareContent))
+                                    Toast.makeText(context, "تم نسخ النص", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = CircleShape,
+                                color = SkyContainer,
+                                border = BorderStroke(1.dp, SkyBorder),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ContentCopy,
+                                        contentDescription = "نسخ",
+                                        tint = BlueRoyal,
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, shareContent)
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "مشاركة"))
+                                },
+                                shape = CircleShape,
+                                color = SkyContainer,
+                                border = BorderStroke(1.dp, SkyBorder),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Share,
+                                        contentDescription = "مشاركة",
+                                        tint = BlueRoyal,
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = BlueRoyal
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "المطلوب : ${item.count}",
+                                    color = SkySurface,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Icon(
+                                    imageVector = Icons.Rounded.MenuBook,
+                                    contentDescription = null,
+                                    tint = SkySurface,
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = BlueRoyal
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "المطلوب : ${item.count}",
-                                color = SkySurface,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Icon(
-                                imageVector = Icons.Rounded.MenuBook,
-                                contentDescription = null,
-                                tint = SkySurface,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-
-                if (item.title.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = item.title,
-                        color = BlueRoyal,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text(
-                    text = item.text,
-                    color = TextBody,
-                    fontSize = 18.sp,
-                    lineHeight = 31.sp,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                if (item.benefit.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = SkyContainer.copy(alpha = 0.78f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    if (item.title.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "✨ ${item.benefit}",
-                            color = NavyDark,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            text = item.title,
+                            color = BlueRoyal,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
                         )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                Surface(
-                    onClick = {
-                        if (!isDone) {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onDecrement()
-                        }
-                    },
-                    shape = RoundedCornerShape(50),
-                    border = BorderStroke(1.5.dp, if (isDone) GoldAccent else SkyBorder),
-                    shadowElevation = if (isDone) 4.dp else 2.dp,
-                    color = Color.Transparent,
-                    modifier = Modifier
-                        .widthIn(min = 165.dp, max = 240.dp)
-                        .height(42.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(buttonTopColor, buttonBottomColor)
-                                )
-                            )
-                            .padding(horizontal = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Text(
+                        text = item.text,
+                        color = TextBody,
+                        fontSize = 18.sp,
+                        lineHeight = 31.sp,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (item.benefit.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = SkyContainer.copy(alpha = 0.78f),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Check,
-                                contentDescription = null,
-                                tint = SkySurface,
-                                modifier = Modifier.size(18.dp)
-                            )
                             Text(
-                                text = if (isDone) "اضغط • مكتمل ($remainingCount)" else "اضغط • $remainingCount",
-                                color = SkySurface,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
+                                text = "✨ ${item.benefit}",
+                                color = NavyDark,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Surface(
+                        onClick = {
+                            if (!isDone) {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onDecrement()
+                            }
+                        },
+                        shape = RoundedCornerShape(50),
+                        border = BorderStroke(1.5.dp, if (isDone) GoldAccent else SkyBorder),
+                        shadowElevation = if (isDone) 4.dp else 2.dp,
+                        color = Color.Transparent,
+                        modifier = Modifier
+                            .widthIn(min = 165.dp, max = 240.dp)
+                            .height(42.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(buttonTopColor, buttonBottomColor)
+                                    )
+                                )
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    tint = SkySurface,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = if (isDone) "اضغط • مكتمل ($remainingCount)" else "اضغط • $remainingCount",
+                                    color = SkySurface,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
