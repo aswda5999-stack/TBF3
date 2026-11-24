@@ -1,5 +1,6 @@
 package com.athar.muslim
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -36,6 +37,7 @@ import com.athar.muslim.data.HadithRepository
 import com.athar.muslim.model.*
 import com.athar.muslim.ui.components.SkyBottomBar
 import com.athar.muslim.ui.components.SkyHeaderDecor
+import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.components.ZikrCard
 import com.athar.muslim.ui.theme.*
 import kotlinx.coroutines.launch
@@ -59,6 +61,11 @@ class MainActivity : ComponentActivity() {
 fun AtharMuslimApp() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val prefs = remember { context.getSharedPreferences("athar_muslim_prefs", Context.MODE_PRIVATE) }
+
+    var soundEnabled by remember { mutableStateOf(prefs.getBoolean("sound_enabled", true)) }
+    var vibrationEnabled by remember { mutableStateOf(prefs.getBoolean("vibration_enabled", true)) }
+    var fontScaleStep by remember { mutableIntStateOf(prefs.getInt("font_scale_step", 1)) }
 
     var selectedTab by remember { mutableStateOf(MainBottomTab.AZKAR) }
     var selectedHadithTopic by remember { mutableStateOf<HadithTopic?>(null) }
@@ -129,6 +136,7 @@ fun AtharMuslimApp() {
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
             containerColor = SkySurface,
+            shape = RoundedCornerShape(22.dp),
             title = {
                 Text(
                     text = "إعدادات أثر مسلم",
@@ -138,13 +146,120 @@ fun AtharMuslimApp() {
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // تبديل صوت النقر
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "صوت النقر عند التسبيح",
+                                color = NavyDark,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "نغمة نقر ناعمة ونغمة إتمام لطيفة",
+                                color = TextBody.copy(alpha = 0.75f),
+                                fontSize = 12.sp
+                            )
+                        }
+                        Switch(
+                            checked = soundEnabled,
+                            onCheckedChange = { checked ->
+                                soundEnabled = checked
+                                prefs.edit().putBoolean("sound_enabled", checked).apply()
+                                if (checked) {
+                                    SoundHelper.playTapSound(enabled = true, isCompletion = false)
+                                }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = SkySurface,
+                                checkedTrackColor = BlueRoyal
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = SkyBorder.copy(alpha = 0.6f))
+
+                    // تبديل الاهتزاز اللمسي
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "الاهتزاز اللمسي",
+                                color = NavyDark,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "استجابة لمسية خفيفة مع كل ضغطة",
+                                color = TextBody.copy(alpha = 0.75f),
+                                fontSize = 12.sp
+                            )
+                        }
+                        Switch(
+                            checked = vibrationEnabled,
+                            onCheckedChange = { checked ->
+                                vibrationEnabled = checked
+                                prefs.edit().putBoolean("vibration_enabled", checked).apply()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = SkySurface,
+                                checkedTrackColor = BlueRoyal
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = SkyBorder.copy(alpha = 0.6f))
+
+                    // حجم خط النصوص
                     Text(
-                        text = "يمكنك إعادة ضبط العدادات بضغطة واحدة.",
-                        color = TextBody,
+                        text = "حجم خط الأذكار والأحاديث",
+                        color = NavyDark,
                         fontSize = 14.sp,
-                        lineHeight = 22.sp
+                        fontWeight = FontWeight.Bold
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val sizeOptions = listOf(0 to "صغير", 1 to "متوسط", 2 to "كبير")
+                        sizeOptions.forEach { (step, label) ->
+                            val selected = fontScaleStep == step
+                            Surface(
+                                onClick = {
+                                    fontScaleStep = step
+                                    prefs.edit().putInt("font_scale_step", step).apply()
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (selected) BlueRoyal else SkyContainer,
+                                border = BorderStroke(1.dp, if (selected) GoldAccent else SkyBorder),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = if (selected) SkySurface else NavyDark,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = SkyBorder.copy(alpha = 0.6f))
+
+                    // تصفير جميع العدادات
                     Button(
                         onClick = {
                             countsMap.keys.toList().forEach { key ->
@@ -264,7 +379,10 @@ fun AtharMuslimApp() {
                             ItemsCardsList(
                                 items = pageItems,
                                 countsMap = countsMap,
-                                isZikrMode = true
+                                isZikrMode = true,
+                                soundEnabled = soundEnabled,
+                                vibrationEnabled = vibrationEnabled,
+                                fontScaleStep = fontScaleStep
                             )
                         }
                     }
@@ -274,14 +392,16 @@ fun AtharMuslimApp() {
                     ItemsCardsList(
                         items = duasList,
                         countsMap = countsMap,
-                        isZikrMode = false
+                        isZikrMode = false,
+                        soundEnabled = soundEnabled,
+                        vibrationEnabled = vibrationEnabled,
+                        fontScaleStep = fontScaleStep
                     )
                 }
 
                 MainBottomTab.HADITH -> {
                     val activeTopic = selectedHadithTopic
                     if (activeTopic == null) {
-                        // واجهة عمودية لأبواب الأحاديث (صحيح البخاري، الرسول ﷺ، وغيرها)
                         HadithTopicsVerticalList(
                             favoritesCount = favoriteHadiths.size,
                             onSelectTopic = { topic ->
@@ -295,6 +415,9 @@ fun AtharMuslimApp() {
                             loadResult = hadithLoadState,
                             favoriteMap = favoriteHadiths,
                             countsMap = countsMap,
+                            soundEnabled = soundEnabled,
+                            vibrationEnabled = vibrationEnabled,
+                            fontScaleStep = fontScaleStep,
                             onBack = { selectedHadithTopic = null },
                             onRetry = { retryNonce++ },
                             onToggleFavorite = { hadithItem ->
@@ -404,12 +527,14 @@ private fun HadithTopicDetailScreen(
     loadResult: HadithLoadResult?,
     favoriteMap: Map<Int, ZikrItem>,
     countsMap: MutableMap<Int, Int>,
+    soundEnabled: Boolean,
+    vibrationEnabled: Boolean,
+    fontScaleStep: Int,
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onToggleFavorite: (ZikrItem) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        // شريط العودة إلى الأبواب
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -479,7 +604,10 @@ private fun HadithTopicDetailScreen(
                             isZikrMode = false,
                             isFavorite = favoriteMap.containsKey(hadithItem.id),
                             showFavoriteButton = true,
-                            onToggleFavorite = { onToggleFavorite(hadithItem) }
+                            onToggleFavorite = { onToggleFavorite(hadithItem) },
+                            soundEnabled = soundEnabled,
+                            vibrationEnabled = vibrationEnabled,
+                            fontScaleStep = fontScaleStep
                         )
                     }
                 }
@@ -526,14 +654,16 @@ private fun HadithTopicDetailScreen(
                             isZikrMode = false,
                             isFavorite = favoriteMap.containsKey(hadithItem.id),
                             showFavoriteButton = true,
-                            onToggleFavorite = { onToggleFavorite(hadithItem) }
+                            onToggleFavorite = { onToggleFavorite(hadithItem) },
+                            soundEnabled = soundEnabled,
+                            vibrationEnabled = vibrationEnabled,
+                            fontScaleStep = fontScaleStep
                         )
                     }
                 }
             }
 
             else -> {
-                // إذا صار خلل في المصدرين الأساسي والاحتياطي
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -582,7 +712,10 @@ private fun HadithTopicDetailScreen(
 private fun ItemsCardsList(
     items: List<ZikrItem>,
     countsMap: MutableMap<Int, Int>,
-    isZikrMode: Boolean
+    isZikrMode: Boolean,
+    soundEnabled: Boolean,
+    vibrationEnabled: Boolean,
+    fontScaleStep: Int
 ) {
     LazyColumn(
         modifier = Modifier
@@ -601,7 +734,10 @@ private fun ItemsCardsList(
                         countsMap[zikrEntry.id] = currentCount - 1
                     }
                 },
-                isZikrMode = isZikrMode
+                isZikrMode = isZikrMode,
+                soundEnabled = soundEnabled,
+                vibrationEnabled = vibrationEnabled,
+                fontScaleStep = fontScaleStep
             )
         }
     }
@@ -647,7 +783,7 @@ private fun FollowUsCardScreen() {
                     border = BorderStroke(1.dp, SkyBorder)
                 ) {
                     Text(
-                        text = "نسخة أثر مسلم • الإصدار 2.0",
+                        text = "نسخة أثر مسلم • الإصدار 2.1",
                         color = NavyDark,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
