@@ -254,7 +254,8 @@ fun AtharMuslimApp() {
                             }
                             ItemsCardsList(
                                 items = pageItems,
-                                countsMap = countsMap
+                                countsMap = countsMap,
+                                isZikrMode = true
                             )
                         }
                     }
@@ -263,14 +264,16 @@ fun AtharMuslimApp() {
                 MainBottomTab.DUA -> {
                     ItemsCardsList(
                         items = duasList,
-                        countsMap = countsMap
+                        countsMap = countsMap,
+                        isZikrMode = false
                     )
                 }
 
                 MainBottomTab.HADITH -> {
                     ItemsCardsList(
                         items = hadithsList,
-                        countsMap = countsMap
+                        countsMap = countsMap,
+                        isZikrMode = false
                     )
                 }
 
@@ -285,13 +288,14 @@ fun AtharMuslimApp() {
 @Composable
 private fun ItemsCardsList(
     items: List<ZikrItem>,
-    countsMap: MutableMap<Int, Int>
+    countsMap: MutableMap<Int, Int>,
+    isZikrMode: Boolean
 ) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = if (isZikrMode) 16.dp else 14.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isZikrMode) 10.dp else 14.dp),
         contentPadding = PaddingValues(top = 6.dp, bottom = 18.dp)
     ) {
         items(items, key = { zikrEntry -> zikrEntry.id }) { zikrEntry ->
@@ -303,7 +307,8 @@ private fun ItemsCardsList(
                     if (currentCount > 0) {
                         countsMap[zikrEntry.id] = currentCount - 1
                     }
-                }
+                },
+                isZikrMode = isZikrMode
             )
         }
     }
