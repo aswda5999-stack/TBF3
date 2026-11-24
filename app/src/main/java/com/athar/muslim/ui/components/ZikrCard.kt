@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.view.HapticFeedbackConstants
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -31,9 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,11 +56,11 @@ fun ZikrCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val haptics = LocalHapticFeedback.current
+    val view = LocalView.current
     val totalCount = item.count.coerceAtLeast(1)
     val isDone = remainingCount <= 0
 
-    val baseBodySp = if (isZikrMode) 17.5f else 17.5f
+    val baseBodySp = 17.5f
     val bodyFontSize = (baseBodySp + (fontScaleStep - 1) * 2f).coerceIn(15f, 24f).sp
     val bodyLineHeight = (bodyFontSize.value * 1.72f).sp
 
@@ -81,9 +81,11 @@ fun ZikrCard(
         append("\n\n— تطبيق أثر مسلم")
     }
 
-    fun triggerTapFeedback(willComplete: Boolean) {
+    fun triggerTouchFeedback(willComplete: Boolean) {
         if (vibrationEnabled) {
-            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            view.performHapticFeedback(
+                if (willComplete) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.KEYBOARD_TAP
+            )
         }
         SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = willComplete)
     }
@@ -162,65 +164,17 @@ fun ZikrCard(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    // في RTL يبدأ العنصر الأول من اليمين: زر اضغط / مكتمل على اليمين وبجانبه النسخ والمشاركة
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
+                        horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
                             onClick = {
-                                val clipboard =
-                                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("athar_zikr", shareContent))
-                                Toast.makeText(context, "تم نسخ الذكر", Toast.LENGTH_SHORT).show()
-                            },
-                            shape = CircleShape,
-                            color = SkyContainer,
-                            border = BorderStroke(1.dp, SkyBorder),
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ContentCopy,
-                                    contentDescription = "نسخ",
-                                    tint = BlueRoyal,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Surface(
-                            onClick = {
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, shareContent)
-                                }
-                                context.startActivity(Intent.createChooser(intent, "مشاركة الذكر"))
-                            },
-                            shape = CircleShape,
-                            color = SkyContainer,
-                            border = BorderStroke(1.dp, SkyBorder),
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Share,
-                                    contentDescription = "مشاركة",
-                                    tint = BlueRoyal,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        Surface(
-                            onClick = {
                                 if (!isDone) {
                                     val willComplete = (remainingCount - 1) <= 0
-                                    triggerTapFeedback(willComplete)
+                                    triggerTouchFeedback(willComplete)
                                     onDecrement()
                                 }
                             },
@@ -285,6 +239,55 @@ fun ZikrCard(
                                         )
                                     }
                                 }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Surface(
+                            onClick = {
+                                val clipboard =
+                                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("athar_zikr", shareContent))
+                                Toast.makeText(context, "تم نسخ الذكر", Toast.LENGTH_SHORT).show()
+                            },
+                            shape = CircleShape,
+                            color = SkyContainer,
+                            border = BorderStroke(1.dp, SkyBorder),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.ContentCopy,
+                                    contentDescription = "نسخ",
+                                    tint = BlueRoyal,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Surface(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, shareContent)
+                                }
+                                context.startActivity(Intent.createChooser(intent, "مشاركة الذكر"))
+                            },
+                            shape = CircleShape,
+                            color = SkyContainer,
+                            border = BorderStroke(1.dp, SkyBorder),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Share,
+                                    contentDescription = "مشاركة",
+                                    tint = BlueRoyal,
+                                    modifier = Modifier.size(16.dp)
+                                )
                             }
                         }
                     }
@@ -436,7 +439,7 @@ fun ZikrCard(
                                 onClick = {
                                     if (!isDone) {
                                         val willComplete = (remainingCount - 1) <= 0
-                                        triggerTapFeedback(willComplete)
+                                        triggerTouchFeedback(willComplete)
                                         onDecrement()
                                     }
                                 },
@@ -600,7 +603,7 @@ fun ZikrCard(
                             onClick = {
                                 if (!isDone) {
                                     val willComplete = (remainingCount - 1) <= 0
-                                    triggerTapFeedback(willComplete)
+                                    triggerTouchFeedback(willComplete)
                                     onDecrement()
                                 }
                             },
