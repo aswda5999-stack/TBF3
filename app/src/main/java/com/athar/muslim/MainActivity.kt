@@ -1,11 +1,13 @@
 package com.athar.muslim
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,7 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.Construction
@@ -76,6 +77,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AtharMuslimApp() {
     val context = LocalContext.current
+    val activity = context as? Activity
     val prefs = remember { context.getSharedPreferences("athar_muslim_prefs", Context.MODE_PRIVATE) }
 
     var soundEnabled by remember { mutableStateOf(prefs.getBoolean("sound_enabled", true)) }
@@ -90,6 +92,7 @@ fun AtharMuslimApp() {
     var isLoadingHadith by remember { mutableStateOf(false) }
     var retryNonce by remember { mutableIntStateOf(0) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
 
     val favoriteHadiths = remember { mutableStateMapOf<Int, ZikrItem>() }
     val subCategories = AzkarSubCategory.entries
@@ -140,6 +143,26 @@ fun AtharMuslimApp() {
                 }
             }
             editor.apply()
+        }
+    }
+
+    // التنقل خطوة واحدة للوراء عند ضغط زر الرجوع في الجهاز وطلب تأكيد عند الخروج النهائي
+    BackHandler(enabled = true) {
+        when {
+            showSettingsDialog -> showSettingsDialog = false
+            showExitDialog -> showExitDialog = false
+            selectedTab == MainBottomTab.AZKAR && selectedAzkarCategory != null -> {
+                selectedAzkarCategory = null
+            }
+            selectedTab == MainBottomTab.HADITH && selectedHadithTopic != null -> {
+                selectedHadithTopic = null
+            }
+            selectedTab != MainBottomTab.AZKAR -> {
+                selectedTab = MainBottomTab.AZKAR
+            }
+            else -> {
+                showExitDialog = true
+            }
         }
     }
 
@@ -201,6 +224,46 @@ fun AtharMuslimApp() {
             hadithLoadState = res
             isLoadingHadith = false
         }
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            containerColor = SkySurface,
+            shape = RoundedCornerShape(22.dp),
+            title = {
+                Text(
+                    text = "تأكيد الخروج من التطبيق",
+                    color = NavyDark,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 18.sp
+                )
+            },
+            text = {
+                Text(
+                    text = "هل تريد الخروج من تطبيق أثر مسلم الآن؟",
+                    color = TextBody,
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitDialog = false
+                        activity?.finishAffinity()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BlueRoyal)
+                ) {
+                    Text("خروج", color = SkySurface, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("البقاء", color = NavyDark, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
     }
 
     if (permissionStep == PermissionStep.NOTIFICATIONS) {
@@ -843,39 +906,6 @@ private fun HadithTopicDetailScreen(
     onSaveCount: (Int, Int) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                onClick = onBack,
-                shape = RoundedCornerShape(50),
-                color = SkySurface,
-                border = BorderStroke(1.2.dp, SkyBorder)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.ArrowForward,
-                        contentDescription = "رجوع",
-                        tint = BlueRoyal,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = "الأبواب",
-                        color = NavyDark,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
         if (topic.isFavorites) {
             val favList = favoriteMap.values.toList()
             if (favList.isEmpty()) {
@@ -899,7 +929,7 @@ private fun HadithTopicDetailScreen(
                         .fillMaxSize()
                         .padding(horizontal = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 18.dp)
+                    contentPadding = PaddingValues(top = 6.dp, bottom = 18.dp)
                 ) {
                     items(favList, key = { it.id }) { hadithItem ->
                         val rem = countsMap[hadithItem.id] ?: hadithItem.count
@@ -953,7 +983,7 @@ private fun HadithTopicDetailScreen(
                         .fillMaxSize()
                         .padding(horizontal = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 18.dp)
+                    contentPadding = PaddingValues(top = 6.dp, bottom = 18.dp)
                 ) {
                     items(list, key = { it.id }) { hadithItem ->
                         val rem = countsMap[hadithItem.id] ?: hadithItem.count
@@ -1102,7 +1132,7 @@ private fun FollowUsCardScreen() {
                     border = BorderStroke(1.dp, SkyBorder)
                 ) {
                     Text(
-                        text = "نسخة أثر مسلم • الإصدار 2.4",
+                        text = "نسخة أثر مسلم • الإصدار 2.5",
                         color = NavyDark,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
