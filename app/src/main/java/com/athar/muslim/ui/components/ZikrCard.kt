@@ -50,12 +50,19 @@ fun ZikrCard(
     isFavorite: Boolean = false,
     showFavoriteButton: Boolean = false,
     onToggleFavorite: () -> Unit = {},
+    soundEnabled: Boolean = true,
+    vibrationEnabled: Boolean = true,
+    fontScaleStep: Int = 1,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val totalCount = item.count.coerceAtLeast(1)
     val isDone = remainingCount <= 0
+
+    val baseBodySp = if (isZikrMode) 17.5f else 17.5f
+    val bodyFontSize = (baseBodySp + (fontScaleStep - 1) * 2f).coerceIn(15f, 24f).sp
+    val bodyLineHeight = (bodyFontSize.value * 1.72f).sp
 
     val buttonTopColor by animateColorAsState(
         targetValue = if (isDone) BlueRoyal else BluePrimary,
@@ -72,6 +79,13 @@ fun ZikrCard(
         }
         append(item.text)
         append("\n\n— تطبيق أثر مسلم")
+    }
+
+    fun triggerTapFeedback(willComplete: Boolean) {
+        if (vibrationEnabled) {
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+        SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = willComplete)
     }
 
     Card(
@@ -122,8 +136,8 @@ fun ZikrCard(
                     Text(
                         text = item.text,
                         color = TextBody,
-                        fontSize = 17.5.sp,
-                        lineHeight = 29.sp,
+                        fontSize = bodyFontSize,
+                        lineHeight = bodyLineHeight,
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.fillMaxWidth()
@@ -205,7 +219,8 @@ fun ZikrCard(
                         Surface(
                             onClick = {
                                 if (!isDone) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    val willComplete = (remainingCount - 1) <= 0
+                                    triggerTapFeedback(willComplete)
                                     onDecrement()
                                 }
                             },
@@ -282,7 +297,6 @@ fun ZikrCard(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (showFavoriteButton) {
-                        // بطاقة الحديث: عنوان الحديث في الأعلى ثم نص الحديث ثم الأزرار في الأسفل
                         if (item.title.isNotEmpty()) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
@@ -318,8 +332,8 @@ fun ZikrCard(
                         Text(
                             text = item.text,
                             color = TextBody,
-                            fontSize = 17.5.sp,
-                            lineHeight = 30.sp,
+                            fontSize = bodyFontSize,
+                            lineHeight = bodyLineHeight,
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.fillMaxWidth()
@@ -343,7 +357,6 @@ fun ZikrCard(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // زر المفضلة
                             Surface(
                                 onClick = {
                                     onToggleFavorite()
@@ -370,7 +383,6 @@ fun ZikrCard(
 
                             Spacer(modifier = Modifier.width(8.dp))
 
-                            // زر النسخ
                             Surface(
                                 onClick = {
                                     val clipboard =
@@ -395,7 +407,6 @@ fun ZikrCard(
 
                             Spacer(modifier = Modifier.width(8.dp))
 
-                            // زر المشاركة
                             Surface(
                                 onClick = {
                                     val intent = Intent(Intent.ACTION_SEND).apply {
@@ -421,11 +432,11 @@ fun ZikrCard(
 
                             Spacer(modifier = Modifier.width(10.dp))
 
-                            // زر التفاعل / القراءة
                             Surface(
                                 onClick = {
                                     if (!isDone) {
-                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        val willComplete = (remainingCount - 1) <= 0
+                                        triggerTapFeedback(willComplete)
                                         onDecrement()
                                     }
                                 },
@@ -465,7 +476,6 @@ fun ZikrCard(
                             }
                         }
                     } else {
-                        // بطاقة الدعاء كما هي
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -559,8 +569,8 @@ fun ZikrCard(
                         Text(
                             text = item.text,
                             color = TextBody,
-                            fontSize = 18.sp,
-                            lineHeight = 31.sp,
+                            fontSize = bodyFontSize,
+                            lineHeight = bodyLineHeight,
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.fillMaxWidth()
@@ -589,7 +599,8 @@ fun ZikrCard(
                         Surface(
                             onClick = {
                                 if (!isDone) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    val willComplete = (remainingCount - 1) <= 0
+                                    triggerTapFeedback(willComplete)
                                     onDecrement()
                                 }
                             },
