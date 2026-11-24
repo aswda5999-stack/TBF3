@@ -81,7 +81,6 @@ import com.athar.muslim.ui.components.SkyHeaderDecor
 import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.components.ZikrCard
 import com.athar.muslim.ui.theme.AtharMuslimTheme
-import com.athar.muslim.ui.theme.BluePrimary
 import com.athar.muslim.ui.theme.BlueRoyal
 import com.athar.muslim.ui.theme.GoldAccent
 import com.athar.muslim.ui.theme.NavyDark
@@ -191,6 +190,12 @@ fun AtharMuslimApp() {
         }
     }
 
+    // رجوع خطوة بخطوة:
+    // 1) إغلاق النوافذ المنبثقة إن كانت مفتوحة
+    // 2) الخروج من قسم الأذكار إلى قائمة أقسام الأذكار
+    // 3) الخروج من باب الأحاديث إلى قائمة أبواب الأحاديث
+    // 4) العودة من أي تبويب آخر إلى تبويب الأذكار الرئيسي
+    // 5) طلب تأكيد الخروج النهائي عند الوصول إلى الجذر الرئيسي للأذكار
     BackHandler(enabled = true) {
         when {
             showSettingsDialog -> showSettingsDialog = false
@@ -202,6 +207,8 @@ fun AtharMuslimApp() {
                 selectedHadithTopic = null
             }
             selectedTab != MainBottomTab.AZKAR -> {
+                selectedAzkarCategory = null
+                selectedHadithTopic = null
                 selectedTab = MainBottomTab.AZKAR
             }
             else -> {
@@ -1174,7 +1181,7 @@ private fun FollowUsCardScreen() {
                     border = BorderStroke(1.dp, SkyBorder)
                 ) {
                     Text(
-                        text = "نسخة أثر مسلم • الإصدار 2.5",
+                        text = "نسخة أثر مسلم • الإصدار 2.8.2",
                         color = NavyDark,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
