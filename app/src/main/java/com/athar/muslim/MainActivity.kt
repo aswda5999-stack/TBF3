@@ -13,8 +13,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.Construction
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,9 +32,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.athar.muslim.data.AzkarRepository
-import com.athar.muslim.model.AzkarSubCategory
-import com.athar.muslim.model.MainBottomTab
-import com.athar.muslim.model.ZikrItem
+import com.athar.muslim.data.HadithRepository
+import com.athar.muslim.model.*
 import com.athar.muslim.ui.components.SkyBottomBar
 import com.athar.muslim.ui.components.SkyHeaderDecor
 import com.athar.muslim.ui.components.ZikrCard
@@ -58,7 +61,13 @@ fun AtharMuslimApp() {
     val scope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(MainBottomTab.AZKAR) }
+    var selectedHadithTopic by remember { mutableStateOf<HadithTopic?>(null) }
+    var hadithLoadState by remember { mutableStateOf<HadithLoadResult?>(null) }
+    var isLoadingHadith by remember { mutableStateOf(false) }
+    var retryNonce by remember { mutableIntStateOf(0) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+
+    val favoriteHadiths = remember { mutableStateMapOf<Int, ZikrItem>() }
 
     val subCategories = AzkarSubCategory.entries
     val pagerState = rememberPagerState(
@@ -71,7 +80,6 @@ fun AtharMuslimApp() {
         AzkarRepository.getAzkarByCategory(context, currentSubCategory.key)
     }
     val duasList = remember { AzkarRepository.getDuas(context) }
-    val hadithsList = remember { AzkarRepository.getHadiths(context) }
 
     val countsMap = remember { mutableStateMapOf<Int, Int>() }
 
@@ -88,24 +96,32 @@ fun AtharMuslimApp() {
             ensureCountsInitialized(AzkarRepository.getAzkarByCategory(context, cat.key))
         }
         ensureCountsInitialized(duasList)
-        ensureCountsInitialized(hadithsList)
     }
 
-    val activeListForBadge: List<ZikrItem> = when (selectedTab) {
-        MainBottomTab.AZKAR -> currentAzkarList
-        MainBottomTab.DUA -> duasList
-        MainBottomTab.HADITH -> hadithsList
-        MainBottomTab.FOLLOW_US -> emptyList()
-    }
-
-    val completedCount = activeListForBadge.count { zikrEntry ->
-        (countsMap[zikrEntry.id] ?: zikrEntry.count) == 0
+    LaunchedEffect(selectedTab, selectedHadithTopic, retryNonce) {
+        val topic = selectedHadithTopic
+        if (selectedTab == MainBottomTab.HADITH && topic != null && !topic.isFavorites) {
+            isLoadingHadith = true
+            hadithLoadState = null
+            val res = HadithRepository.loadTopicHadiths(topic)
+            if (res is HadithLoadResult.Success) {
+                ensureCountsInitialized(res.items)
+            }
+            hadithLoadState = res
+            isLoadingHadith = false
+        }
     }
 
     val subtitleBadgeText = when (selectedTab) {
-        MainBottomTab.AZKAR -> "${currentSubCategory.title} ($completedCount/${currentAzkarList.size})"
-        MainBottomTab.DUA -> "الأدعية المختارة ($completedCount/${duasList.size})"
-        MainBottomTab.HADITH -> "الأحاديث النبوية ($completedCount/${hadithsList.size})"
+        MainBottomTab.AZKAR -> {
+            val done = currentAzkarList.count { (countsMap[it.id] ?: it.count) == 0 }
+            "${currentSubCategory.title} ($done/${currentAzkarList.size})"
+        }
+        MainBottomTab.DUA -> {
+            val done = duasList.count { (countsMap[it.id] ?: it.count) == 0 }
+            "الأدعية المختارة ($done/${duasList.size})"
+        }
+        MainBottomTab.HADITH -> selectedHadithTopic?.title ?: "أبواب الأحاديث"
         MainBottomTab.FOLLOW_US -> "تطبيق أثر مسلم"
     }
 
@@ -124,36 +140,17 @@ fun AtharMuslimApp() {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "يمكنك إعادة ضبط عدادات القسم الحالي أو جميع العدادات بضغطة واحدة.",
+                        text = "يمكنك إعادة ضبط العدادات بضغطة واحدة.",
                         color = TextBody,
                         fontSize = 14.sp,
                         lineHeight = 22.sp
                     )
-                    OutlinedButton(
-                        onClick = {
-                            activeListForBadge.forEach { zikrEntry ->
-                                countsMap[zikrEntry.id] = zikrEntry.count
-                            }
-                            showSettingsDialog = false
-                        },
-                        border = BorderStroke(1.dp, SkyBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Refresh,
-                            contentDescription = null,
-                            tint = BlueRoyal,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("تصفير عدادات القسم الحالي", color = BlueRoyal, fontWeight = FontWeight.Bold)
-                    }
                     Button(
                         onClick = {
                             countsMap.keys.toList().forEach { key ->
                                 val original = (subCategories.flatMap {
                                     AzkarRepository.getAzkarByCategory(context, it.key)
-                                } + duasList + hadithsList).find { it.id == key }?.count ?: 1
+                                } + duasList).find { it.id == key }?.count ?: 1
                                 countsMap[key] = original
                             }
                             showSettingsDialog = false
@@ -161,6 +158,13 @@ fun AtharMuslimApp() {
                         colors = ButtonDefaults.buttonColors(containerColor = BlueRoyal),
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Refresh,
+                            contentDescription = null,
+                            tint = SkySurface,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text("تصفير جميع العدادات", color = SkySurface, fontWeight = FontWeight.Bold)
                     }
                 }
@@ -184,7 +188,12 @@ fun AtharMuslimApp() {
         bottomBar = {
             SkyBottomBar(
                 selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
+                onTabSelected = { tab ->
+                    selectedTab = tab
+                    if (tab != MainBottomTab.HADITH) {
+                        selectedHadithTopic = null
+                    }
+                }
             )
         },
         containerColor = SkyBackground
@@ -270,15 +279,299 @@ fun AtharMuslimApp() {
                 }
 
                 MainBottomTab.HADITH -> {
-                    ItemsCardsList(
-                        items = hadithsList,
-                        countsMap = countsMap,
-                        isZikrMode = false
-                    )
+                    val activeTopic = selectedHadithTopic
+                    if (activeTopic == null) {
+                        // واجهة عمودية لأبواب الأحاديث (صحيح البخاري، الرسول ﷺ، وغيرها)
+                        HadithTopicsVerticalList(
+                            favoritesCount = favoriteHadiths.size,
+                            onSelectTopic = { topic ->
+                                selectedHadithTopic = topic
+                            }
+                        )
+                    } else {
+                        HadithTopicDetailScreen(
+                            topic = activeTopic,
+                            isLoading = isLoadingHadith,
+                            loadResult = hadithLoadState,
+                            favoriteMap = favoriteHadiths,
+                            countsMap = countsMap,
+                            onBack = { selectedHadithTopic = null },
+                            onRetry = { retryNonce++ },
+                            onToggleFavorite = { hadithItem ->
+                                if (favoriteHadiths.containsKey(hadithItem.id)) {
+                                    favoriteHadiths.remove(hadithItem.id)
+                                } else {
+                                    favoriteHadiths[hadithItem.id] = hadithItem
+                                }
+                            }
+                        )
+                    }
                 }
 
                 MainBottomTab.FOLLOW_US -> {
                     FollowUsCardScreen()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HadithTopicsVerticalList(
+    favoritesCount: Int,
+    onSelectTopic: (HadithTopic) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 18.dp)
+    ) {
+        items(HadithTopic.entries, key = { it.key }) { topic ->
+            Card(
+                onClick = { onSelectTopic(topic) },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = SkySurface),
+                border = BorderStroke(1.5.dp, SkyBorder),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = SkyContainer,
+                            border = BorderStroke(1.dp, SkyBorder),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = topic.icon,
+                                    contentDescription = null,
+                                    tint = BlueRoyal,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+
+                        Column {
+                            Text(
+                                text = topic.title,
+                                color = NavyDark,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (topic.isFavorites) {
+                                    "عدد الأحاديث المحفوظة: $favoritesCount"
+                                } else {
+                                    topic.subtitle
+                                },
+                                color = TextBody.copy(alpha = 0.8f),
+                                fontSize = 12.5.sp
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.Rounded.ChevronLeft,
+                        contentDescription = null,
+                        tint = BlueRoyal,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HadithTopicDetailScreen(
+    topic: HadithTopic,
+    isLoading: Boolean,
+    loadResult: HadithLoadResult?,
+    favoriteMap: Map<Int, ZikrItem>,
+    countsMap: MutableMap<Int, Int>,
+    onBack: () -> Unit,
+    onRetry: () -> Unit,
+    onToggleFavorite: (ZikrItem) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // شريط العودة إلى الأبواب
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                onClick = onBack,
+                shape = RoundedCornerShape(50),
+                color = SkySurface,
+                border = BorderStroke(1.2.dp, SkyBorder)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ArrowForward,
+                        contentDescription = "رجوع",
+                        tint = BlueRoyal,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "الأبواب",
+                        color = NavyDark,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        if (topic.isFavorites) {
+            val favList = favoriteMap.values.toList()
+            if (favList.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "لا توجد أحاديث في المفضلة بعد.",
+                        color = NavyDark,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 18.dp)
+                ) {
+                    items(favList, key = { it.id }) { hadithItem ->
+                        val rem = countsMap[hadithItem.id] ?: hadithItem.count
+                        ZikrCard(
+                            item = hadithItem,
+                            remainingCount = rem,
+                            onDecrement = {
+                                if (rem > 0) countsMap[hadithItem.id] = rem - 1
+                            },
+                            isZikrMode = false,
+                            isFavorite = favoriteMap.containsKey(hadithItem.id),
+                            showFavoriteButton = true,
+                            onToggleFavorite = { onToggleFavorite(hadithItem) }
+                        )
+                    }
+                }
+            }
+            return@Column
+        }
+
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = BlueRoyal)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "جاري تحميل الأحاديث...",
+                            color = NavyDark,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+
+            loadResult is HadithLoadResult.Success -> {
+                val list = loadResult.items
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 18.dp)
+                ) {
+                    items(list, key = { it.id }) { hadithItem ->
+                        val rem = countsMap[hadithItem.id] ?: hadithItem.count
+                        ZikrCard(
+                            item = hadithItem,
+                            remainingCount = rem,
+                            onDecrement = {
+                                if (rem > 0) countsMap[hadithItem.id] = rem - 1
+                            },
+                            isZikrMode = false,
+                            isFavorite = favoriteMap.containsKey(hadithItem.id),
+                            showFavoriteButton = true,
+                            onToggleFavorite = { onToggleFavorite(hadithItem) }
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                // إذا صار خلل في المصدرين الأساسي والاحتياطي
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = SkySurface),
+                        border = BorderStroke(1.5.dp, SkyBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(22.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Construction,
+                                contentDescription = null,
+                                tint = BlueRoyal,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Text(
+                                text = "هذا القسم قيد التطوير",
+                                color = NavyDark,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                textAlign = TextAlign.Center
+                            )
+                            Button(
+                                onClick = onRetry,
+                                colors = ButtonDefaults.buttonColors(containerColor = BlueRoyal)
+                            ) {
+                                Text("إعادة المحاولة", color = SkySurface, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             }
         }
