@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.quadraticTo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -96,8 +95,16 @@ fun SkyHeaderDecor(
             birds.forEach { (origin, span) ->
                 val birdPath = Path().apply {
                     moveTo(origin.x - span, origin.y + span * 0.35f)
-                    quadraticTo(origin.x - span * 0.4f, origin.y - span * 0.3f, origin.x, origin.y + span * 0.2f)
-                    quadraticTo(origin.x + span * 0.4f, origin.y - span * 0.3f, origin.x + span, origin.y + span * 0.35f)
+                    cubicTo(
+                        origin.x - span * 0.5f, origin.y - span * 0.35f,
+                        origin.x - span * 0.2f, origin.y - span * 0.1f,
+                        origin.x, origin.y + span * 0.2f
+                    )
+                    cubicTo(
+                        origin.x + span * 0.2f, origin.y - span * 0.1f,
+                        origin.x + span * 0.5f, origin.y - span * 0.35f,
+                        origin.x + span, origin.y + span * 0.35f
+                    )
                 }
                 drawPath(
                     path = birdPath,
@@ -108,8 +115,8 @@ fun SkyHeaderDecor(
 
             val wavePath = Path().apply {
                 moveTo(0f, h * 0.82f)
-                quadraticTo(w * 0.25f, h * 0.73f, w * 0.5f, h * 0.84f)
-                quadraticTo(w * 0.75f, h * 0.94f, w, h * 0.80f)
+                cubicTo(w * 0.15f, h * 0.73f, w * 0.35f, h * 0.75f, w * 0.5f, h * 0.84f)
+                cubicTo(w * 0.68f, h * 0.94f, w * 0.86f, h * 0.88f, w, h * 0.80f)
                 lineTo(w, h)
                 lineTo(0f, h)
                 close()
