@@ -12,14 +12,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.quadraticTo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,18 +45,15 @@ fun SkyHeaderDecor(
             val w = size.width
             val h = size.height
 
-            // قبة المسجد والمنارة على الجانب الأيمن
             val domeCenterX = w * 0.84f
             val domeBaseY = h * 0.72f
             val domeRadius = w * 0.11f
 
-            // جسم المسجد السفلي
             drawRect(
                 color = SkyOrnament.copy(alpha = 0.75f),
                 topLeft = Offset(domeCenterX - domeRadius * 1.15f, domeBaseY),
                 size = Size(domeRadius * 2.3f, h * 0.25f)
             )
-            // القبة الرئيسية
             drawArc(
                 color = SkyOrnament.copy(alpha = 0.85f),
                 startAngle = 180f,
@@ -66,7 +62,6 @@ fun SkyHeaderDecor(
                 topLeft = Offset(domeCenterX - domeRadius, domeBaseY - domeRadius),
                 size = Size(domeRadius * 2f, domeRadius * 2f)
             )
-            // منارة صغيرة بجانب القبة
             drawRect(
                 color = SkyOrnament.copy(alpha = 0.8f),
                 topLeft = Offset(domeCenterX + domeRadius * 1.25f, domeBaseY - h * 0.26f),
@@ -81,7 +76,6 @@ fun SkyHeaderDecor(
                 size = Size(w * 0.04f, w * 0.05f)
             )
 
-            // كتلة أشجار ناعمة على اليسار
             drawCircle(
                 color = SkyOrnament.copy(alpha = 0.75f),
                 radius = w * 0.08f,
@@ -93,7 +87,6 @@ fun SkyHeaderDecor(
                 center = Offset(w * 0.14f, h * 0.74f)
             )
 
-            // طيور صغيرة في السماء
             val birds = listOf(
                 Offset(w * 0.24f, h * 0.20f) to 10f,
                 Offset(w * 0.29f, h * 0.15f) to 8f,
@@ -113,7 +106,6 @@ fun SkyHeaderDecor(
                 )
             }
 
-            // موجة سفلى تفصل الترويسة عن القائمة
             val wavePath = Path().apply {
                 moveTo(0f, h * 0.82f)
                 quadraticTo(w * 0.25f, h * 0.73f, w * 0.5f, h * 0.84f)
@@ -128,7 +120,6 @@ fun SkyHeaderDecor(
             )
         }
 
-        // زر الإعدادات الدائري في الزاوية
         Surface(
             onClick = onSettingsClick,
             shape = CircleShape,
@@ -151,7 +142,6 @@ fun SkyHeaderDecor(
             }
         }
 
-        // الشارة الرئيسية والشارة الفرعية في المنتصف
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -193,7 +183,6 @@ fun SkyHeaderDecor(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // شارة القسم والعدد (مثل: أذكار الصباح (4/5))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
