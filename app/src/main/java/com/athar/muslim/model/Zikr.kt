@@ -4,11 +4,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Mosque
 import androidx.compose.material.icons.rounded.NightsStay
+import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -24,14 +26,74 @@ enum class AzkarSubCategory(
     val key: String,
     val title: String,
     val subtitle: String,
+    val reminderHour: Int,
+    val reminderMinute: Int,
     val icon: ImageVector
 ) {
-    MORNING("morning", "أذكار الصباح", "تقال من الفجر حتى الزوال", Icons.Rounded.WbSunny),
-    EVENING("evening", "أذكار المساء", "تقال من العصر حتى الليل", Icons.Rounded.NightsStay),
-    SLEEP("sleep", "أذكار النوم", "تحصين وسكينة قبل النوم", Icons.Rounded.Bedtime),
-    PRAYER("prayer", "أذكار بعد الصلاة", "تقال عقب الصلوات المكتوبة", Icons.Rounded.Mosque),
-    WAKEUP("wakeup", "أذكار الاستيقاظ", "عند الاستيقاظ من النوم", Icons.Rounded.AutoStories),
-    HOME("home", "أذكار المنزل", "دخول البيت والخروج منه", Icons.Rounded.Home)
+    MORNING(
+        key = "morning",
+        title = "أذكار الصباح",
+        subtitle = "تقال من الفجر حتى الزوال • تذكير 07:00 ص",
+        reminderHour = 7,
+        reminderMinute = 0,
+        icon = Icons.Rounded.WbSunny
+    ),
+    EVENING(
+        key = "evening",
+        title = "أذكار المساء",
+        subtitle = "تقال من العصر حتى الليل • تذكير 04:30 م",
+        reminderHour = 16,
+        reminderMinute = 30,
+        icon = Icons.Rounded.NightsStay
+    ),
+    SLEEP(
+        key = "sleep",
+        title = "أذكار النوم",
+        subtitle = "تحصين وسكينة قبل النوم • تذكير 10:30 م",
+        reminderHour = 22,
+        reminderMinute = 30,
+        icon = Icons.Rounded.Bedtime
+    ),
+    PRAYER(
+        key = "prayer",
+        title = "أذكار بعد الصلاة",
+        subtitle = "تقال عقب الصلوات المكتوبة",
+        reminderHour = 13,
+        reminderMinute = 0,
+        icon = Icons.Rounded.Mosque
+    ),
+    WAKEUP(
+        key = "wakeup",
+        title = "أذكار الاستيقاظ",
+        subtitle = "عند الاستيقاظ من النوم",
+        reminderHour = 6,
+        reminderMinute = 30,
+        icon = Icons.Rounded.AutoStories
+    ),
+    HOME(
+        key = "home",
+        title = "أذكار المنزل",
+        subtitle = "دخول البيت والخروج منه",
+        reminderHour = 18,
+        reminderMinute = 0,
+        icon = Icons.Rounded.Home
+    ),
+    TRAVEL(
+        key = "travel",
+        title = "أذكار السفر",
+        subtitle = "الركوب والتنقل وحفظ الطريق",
+        reminderHour = 9,
+        reminderMinute = 0,
+        icon = Icons.Rounded.DirectionsCar
+    ),
+    FOOD(
+        key = "food",
+        title = "أذكار الطعام",
+        subtitle = "قبل الطعام وبعد الفراغ منه",
+        reminderHour = 14,
+        reminderMinute = 0,
+        icon = Icons.Rounded.Restaurant
+    )
 }
 
 enum class MainBottomTab(
