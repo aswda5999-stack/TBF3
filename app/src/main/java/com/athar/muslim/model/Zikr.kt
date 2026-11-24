@@ -1,8 +1,10 @@
 package com.athar.muslim.model
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Mosque
@@ -41,4 +43,43 @@ enum class MainBottomTab(
     HADITH("hadith", "الأحاديث", Icons.Rounded.AutoStories),
     DUA("dua", "الدعاء", Icons.Rounded.Mosque),
     AZKAR("azkar", "الأذكار", Icons.Rounded.WbSunny)
+}
+
+enum class HadithTopic(
+    val key: String,
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val isFavorites: Boolean = false
+) {
+    BUKHARI(
+        key = "bukhari",
+        title = "صحيح البخاري",
+        subtitle = "أحاديث مختارة من صحيح الإمام البخاري",
+        icon = Icons.Rounded.MenuBook
+    ),
+    PROPHET(
+        key = "prophet",
+        title = "الرسول ﷺ",
+        subtitle = "هَدْي النبي محمد ﷺ وسيرته ووصاياه",
+        icon = Icons.Rounded.AutoAwesome
+    ),
+    MUSLIM(
+        key = "muslim",
+        title = "صحيح مسلم",
+        subtitle = "أحاديث مختارة من صحيح الإمام مسلم",
+        icon = Icons.Rounded.AutoStories
+    ),
+    FAVORITES(
+        key = "favorites",
+        title = "المفضلة",
+        subtitle = "الأحاديث التي قمت بحفظها",
+        icon = Icons.Rounded.Favorite,
+        isFavorites = true
+    )
+}
+
+sealed class HadithLoadResult {
+    data class Success(val items: List<ZikrItem>) : HadithLoadResult()
+    data object UnderDevelopment : HadithLoadResult()
 }
