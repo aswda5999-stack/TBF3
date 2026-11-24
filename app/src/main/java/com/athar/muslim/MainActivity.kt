@@ -75,10 +75,10 @@ fun AtharMuslimApp() {
 
     val countsMap = remember { mutableStateMapOf<Int, Int>() }
 
-    fun ensureCountsInitialized(items: List<ZikrItem>) {
-        items.forEach { item ->
-            if (!countsMap.containsKey(item.id)) {
-                countsMap[item.id] = item.count
+    fun ensureCountsInitialized(list: List<ZikrItem>) {
+        list.forEach { zikrEntry ->
+            if (!countsMap.containsKey(zikrEntry.id)) {
+                countsMap[zikrEntry.id] = zikrEntry.count
             }
         }
     }
@@ -98,7 +98,9 @@ fun AtharMuslimApp() {
         MainBottomTab.FOLLOW_US -> emptyList()
     }
 
-    val completedCount = activeListForBadge.count { (countsMap[it.id] ?: it.count) == 0 }
+    val completedCount = activeListForBadge.count { zikrEntry ->
+        (countsMap[zikrEntry.id] ?: zikrEntry.count) == 0
+    }
 
     val subtitleBadgeText = when (selectedTab) {
         MainBottomTab.AZKAR -> "${currentSubCategory.title} ($completedCount/${currentAzkarList.size})"
@@ -129,7 +131,9 @@ fun AtharMuslimApp() {
                     )
                     OutlinedButton(
                         onClick = {
-                            activeListForBadge.forEach { countsMap[it.id] = it.count }
+                            activeListForBadge.forEach { zikrEntry ->
+                                countsMap[zikrEntry.id] = zikrEntry.count
+                            }
                             showSettingsDialog = false
                         },
                         border = BorderStroke(1.dp, SkyBorder),
@@ -194,7 +198,6 @@ fun AtharMuslimApp() {
             when (selectedTab) {
                 MainBottomTab.AZKAR -> {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // شريط اختيار أقسام الأذكار (الصباح، المساء، النوم، بعد الصلاة، وغيرها)
                         LazyRow(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -291,14 +294,14 @@ private fun ItemsCardsList(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(top = 6.dp, bottom = 18.dp)
     ) {
-        items(items, key = { it.id }) { item ->
-            val currentCount = countsMap[item.id] ?: item.count
+        items(items, key = { zikrEntry -> zikrEntry.id }) { zikrEntry ->
+            val currentCount = countsMap[zikrEntry.id] ?: zikrEntry.count
             ZikrCard(
-                item = item,
+                item = zikrEntry,
                 remainingCount = currentCount,
                 onDecrement = {
                     if (currentCount > 0) {
-                        countsMap[item.id] = currentCount - 1
+                        countsMap[zikrEntry.id] = currentCount - 1
                     }
                 }
             )
