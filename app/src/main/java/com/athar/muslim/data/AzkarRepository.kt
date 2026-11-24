@@ -6,13 +6,23 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object AzkarRepository {
-    private var cachedAzkarByCategory: Map<String, List<ZikrItem>>? = null
+    private val cachedAzkarByCategory = mutableMapOf<String, List<ZikrItem>>()
     private var cachedDuas: List<ZikrItem>? = null
     private var cachedHadiths: List<ZikrItem>? = null
 
     fun getAzkarByCategory(context: Context, categoryKey: String): List<ZikrItem> {
-        val map = cachedAzkarByCategory ?: loadAzkarMap(context).also { cachedAzkarByCategory = it }
-        return map[categoryKey].orEmpty()
+        cachedAzkarByCategory[categoryKey]?.let { return it }
+        val loaded = loadCategoryFile(context, categoryKey)
+        cachedAzkarByCategory[categoryKey] = loaded
+        return loaded
+    }
+
+    fun getAllAzkar(context: Context): List<ZikrItem> {
+        val keys = listOf(
+            "morning", "evening", "sleep", "prayer",
+            "wakeup", "home", "travel", "food"
+        )
+        return keys.flatMap { getAzkarByCategory(context, it) }
     }
 
     fun getDuas(context: Context): List<ZikrItem> {
@@ -27,27 +37,28 @@ object AzkarRepository {
         return cachedHadiths.orEmpty()
     }
 
-    private fun loadAzkarMap(context: Context): Map<String, List<ZikrItem>> {
-        val grouped = mutableMapOf<String, MutableList<ZikrItem>>()
+    private fun loadCategoryFile(context: Context, categoryKey: String): List<ZikrItem> {
+        val list = mutableListOf<ZikrItem>()
+        val fileName = "azkar_${categoryKey}.json"
         try {
-            val jsonString = context.assets.open("azkar.json").bufferedReader().use { it.readText() }
+            val jsonString = context.assets.open(fileName).bufferedReader().use { it.readText() }
             val array = JSONArray(jsonString)
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
-                val cat = obj.optString("category", "morning")
-                val item = ZikrItem(
-                    id = obj.getInt("id"),
-                    title = obj.optString("title", ""),
-                    text = obj.getString("text"),
-                    count = obj.optInt("count", 1).coerceAtLeast(1),
-                    benefit = obj.optString("benefit", "")
+                list.add(
+                    ZikrItem(
+                        id = obj.getInt("id"),
+                        title = obj.optString("title", ""),
+                        text = obj.getString("text"),
+                        count = obj.optInt("count", 1).coerceAtLeast(1),
+                        benefit = obj.optString("benefit", "")
+                    )
                 )
-                grouped.getOrPut(cat) { mutableListOf() }.add(item)
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
+            // إرجاع قائمة فارغة بأمان في حال عدم وجود ملف الفئة
         }
-        return grouped
+        return list
     }
 
     private fun loadLibraryLists(context: Context) {
@@ -82,8 +93,8 @@ object AzkarRepository {
                     )
                 )
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
+            // إرجاع قوائم آمنة
         }
         cachedDuas = duasList
         cachedHadiths = hadithsList
