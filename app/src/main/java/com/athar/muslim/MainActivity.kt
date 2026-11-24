@@ -560,50 +560,15 @@ fun AtharMuslimApp() {
                             onSelectCategory = { cat -> selectedAzkarCategory = cat }
                         )
                     } else {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    onClick = { selectedAzkarCategory = null },
-                                    shape = RoundedCornerShape(50),
-                                    color = SkySurface,
-                                    border = BorderStroke(1.2.dp, SkyBorder)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.ArrowForward,
-                                            contentDescription = "رجوع",
-                                            tint = BlueRoyal,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Text(
-                                            text = "رجوع",
-                                            color = NavyDark,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-
-                            ItemsCardsList(
-                                items = currentAzkarList,
-                                countsMap = countsMap,
-                                isZikrMode = true,
-                                soundEnabled = soundEnabled,
-                                vibrationEnabled = vibrationEnabled,
-                                fontScaleStep = fontScaleStep,
-                                onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
-                            )
-                        }
+                        ItemsCardsList(
+                            items = currentAzkarList,
+                            countsMap = countsMap,
+                            isZikrMode = true,
+                            soundEnabled = soundEnabled,
+                            vibrationEnabled = vibrationEnabled,
+                            fontScaleStep = fontScaleStep,
+                            onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
+                        )
                     }
                 }
 
@@ -1137,7 +1102,7 @@ private fun FollowUsCardScreen() {
                     border = BorderStroke(1.dp, SkyBorder)
                 ) {
                     Text(
-                        text = "نسخة أثر مسلم • الإصدار 2.3",
+                        text = "نسخة أثر مسلم • الإصدار 2.4",
                         color = NavyDark,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
