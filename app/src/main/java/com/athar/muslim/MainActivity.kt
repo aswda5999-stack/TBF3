@@ -109,7 +109,7 @@ fun AtharMuslimApp() {
     }
 
     fun resetAllCountsToDefault() {
-        val allItems = subCategories.flatMap { AzkarRepository.getAzkarByCategory(context, it.key) } + duasList
+        val allItems = AzkarRepository.getAllAzkar(context) + duasList
         val editor = prefs.edit().putString("counts_day_key", todayKey())
         allItems.forEach { entry ->
             countsMap[entry.id] = entry.count
@@ -121,10 +121,9 @@ fun AtharMuslimApp() {
     fun syncDailyCounts() {
         val currentDay = todayKey()
         val savedDay = prefs.getString("counts_day_key", currentDay)
-        val allItems = subCategories.flatMap { AzkarRepository.getAzkarByCategory(context, it.key) } + duasList
+        val allItems = AzkarRepository.getAllAzkar(context) + duasList
 
         if (savedDay != currentDay) {
-            // بداية يوم جديد بعد منتصف الليل: تصفير تلقائي يومي
             val editor = prefs.edit().putString("counts_day_key", currentDay)
             allItems.forEach { entry ->
                 countsMap[entry.id] = entry.count
@@ -144,7 +143,6 @@ fun AtharMuslimApp() {
         }
     }
 
-    // تسلسل طلب الأذونات واحداً تلو الآخر عند التثبيت أو الفتح
     var permissionStep by remember { mutableStateOf(PermissionStep.NONE) }
 
     val exactAlarmLauncher = rememberLauncherForActivityResult(
@@ -205,7 +203,6 @@ fun AtharMuslimApp() {
         }
     }
 
-    // حوار الخطوة الأولى للأذونات: الإشعارات
     if (permissionStep == PermissionStep.NOTIFICATIONS) {
         AlertDialog(
             onDismissRequest = {
@@ -265,7 +262,6 @@ fun AtharMuslimApp() {
         )
     }
 
-    // حوار الخطوة الثانية للأذونات: المنبهات الدقيقة في الموعد المحدد
     if (permissionStep == PermissionStep.EXACT_ALARM) {
         AlertDialog(
             onDismissRequest = {
@@ -395,7 +391,7 @@ fun AtharMuslimApp() {
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "صوت النقر عند التسبيح",
+                                text = "صوت اللمس والنقر",
                                 color = NavyDark,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
@@ -437,7 +433,7 @@ fun AtharMuslimApp() {
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "استجابة لمسية خفيفة مع كل ضغطة",
+                                text = "استجابة لمسية خفيفة مع كل لمسة",
                                 color = TextBody.copy(alpha = 0.75f),
                                 fontSize = 12.sp
                             )
@@ -558,21 +554,18 @@ fun AtharMuslimApp() {
                 MainBottomTab.AZKAR -> {
                     val activeCat = selectedAzkarCategory
                     if (activeCat == null) {
-                        // واجهة عمودية موسّعة لأقسام الأذكار
                         AzkarCategoriesVerticalList(
                             categories = subCategories,
                             countsMap = countsMap,
                             onSelectCategory = { cat -> selectedAzkarCategory = cat }
                         )
                     } else {
-                        // عرض جميع أذكار القسم المختار (مثل أذكار الصباح)
                         Column(modifier = Modifier.fillMaxSize()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 14.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Surface(
                                     onClick = { selectedAzkarCategory = null },
@@ -592,20 +585,13 @@ fun AtharMuslimApp() {
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Text(
-                                            text = "أقسام الأذكار",
+                                            text = "رجوع",
                                             color = NavyDark,
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
                                 }
-
-                                Text(
-                                    text = "تصفير تلقائي يومياً منتصف الليل",
-                                    color = BluePrimary,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
                             }
 
                             ItemsCardsList(
@@ -1151,7 +1137,7 @@ private fun FollowUsCardScreen() {
                     border = BorderStroke(1.dp, SkyBorder)
                 ) {
                     Text(
-                        text = "نسخة أثر مسلم • الإصدار 2.2",
+                        text = "نسخة أثر مسلم • الإصدار 2.3",
                         color = NavyDark,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
