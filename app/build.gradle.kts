@@ -8,11 +8,11 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.athar.muslim"
+        applicationId = "com.athar.muslim.v2"
         minSdk = 24
         targetSdk = 34
-        versionCode = 6
-        versionName = "2.4.0"
+        versionCode = 14
+        versionName = "2.8.1"
     }
 
     buildTypes {
