@@ -27,7 +27,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.quadraticTo
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -82,7 +81,11 @@ fun ZikrCard(
                 val rightCorner = Path().apply {
                     moveTo(w, h)
                     lineTo(w - cornerSize, h)
-                    quadraticTo(w - cornerSize * 0.35f, h - cornerSize * 0.35f, w, h - cornerSize)
+                    cubicTo(
+                        w - cornerSize * 0.45f, h - cornerSize * 0.25f,
+                        w - cornerSize * 0.25f, h - cornerSize * 0.45f,
+                        w, h - cornerSize
+                    )
                     close()
                 }
                 drawPath(path = rightCorner, color = SkyOrnament.copy(alpha = 0.55f))
@@ -96,7 +99,11 @@ fun ZikrCard(
                 val leftCorner = Path().apply {
                     moveTo(0f, h)
                     lineTo(cornerSize, h)
-                    quadraticTo(cornerSize * 0.35f, h - cornerSize * 0.35f, 0f, h - cornerSize)
+                    cubicTo(
+                        cornerSize * 0.45f, h - cornerSize * 0.25f,
+                        cornerSize * 0.25f, h - cornerSize * 0.45f,
+                        0f, h - cornerSize
+                    )
                     close()
                 }
                 drawPath(path = leftCorner, color = SkyOrnament.copy(alpha = 0.55f))
