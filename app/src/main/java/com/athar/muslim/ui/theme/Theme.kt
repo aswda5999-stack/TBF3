@@ -63,14 +63,15 @@ enum class AppThemePreset(
     }
 }
 
-// ألوان مساعدة متوافقة مع بقية الشاشات
 val BlueRoyal = Color(0xFF0F4C81)
+val BluePrimary = BlueRoyal
 val NavyDark = Color(0xFF0B2545)
 val GoldAccent = Color(0xFFD4A017)
 val SkyBackground = Color(0xFFF2F7FC)
 val SkySurface = Color(0xFFFFFFFF)
 val SkyContainer = Color(0xFFE1EFFA)
 val SkyBorder = Color(0xFFBBD6EE)
+val SkyOrnament = SkyBorder
 val TextBody = Color(0xFF1E293B)
 
 fun colorSchemeForPreset(preset: AppThemePreset): ColorScheme = when (preset) {
