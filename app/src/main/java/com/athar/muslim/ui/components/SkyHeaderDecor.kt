@@ -1,7 +1,7 @@
 package com.athar.muslim.ui.components
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,22 +22,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -77,182 +75,151 @@ enum class IslamicArtType {
 data class IslamicBannerSlide(
     val id: Int,
     val drawableName: String,
-    val title: String,
-    val subtitle: String,
-    val tag: String,
     val artType: IslamicArtType
 )
 
 fun getTenIslamicSlides(): List<IslamicBannerSlide> = listOf(
-    IslamicBannerSlide(1, "islamic_slide_one", "كتاب الله الكريم", "وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا", "القرآن الكريم", IslamicArtType.QURAN_BOOK),
-    IslamicBannerSlide(2, "islamic_slide_two", "المسجد الحرام", "قبلة المسلمين ومهوى الأفئدة", "مكة المكرمة", IslamicArtType.MASJID_HARAM),
-    IslamicBannerSlide(3, "islamic_slide_three", "المسجد النبوي", "اللهم صلِّ وسلم على نبينا محمد", "المدينة المنورة", IslamicArtType.MASJID_NABAWI),
-    IslamicBannerSlide(4, "islamic_slide_four", "قبة الصخرة", "بارك الله في المسجد الأقصى وما حوله", "القدس الشريف", IslamicArtType.DOME_OF_ROCK),
-    IslamicBannerSlide(5, "islamic_slide_five", "محراب النور", "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ", "خشوع وطمأنينة", IslamicArtType.MIHRAB_LIGHT),
-    IslamicBannerSlide(6, "islamic_slide_six", "المصحف المزخرف", "نورٌ وهدايةٌ للقلوب في كل حين", "آيات بينات", IslamicArtType.QURAN_ILLUMINATED),
-    IslamicBannerSlide(7, "islamic_slide_seven", "مآذن التوحيد", "حيّ على الصلاة.. حيّ على الفلاح", "نداء السماء", IslamicArtType.CRESCENT_MINARET),
-    IslamicBannerSlide(8, "islamic_slide_eight", "أقواس العراقة", "عمارة إسلامية تجمع الجمال والسكينة", "فن إسلامي", IslamicArtType.ANDALUS_ARCHES),
-    IslamicBannerSlide(9, "islamic_slide_nine", "سبحة الذاكرين", "سبحان الله وبحمده، سبحان الله العظيم", "ذكر وتسبيح", IslamicArtType.TASBIH_PEARLS),
-    IslamicBannerSlide(10, "islamic_slide_ten", "نجمة الهدى", "زخرفة هندسية تبعث الصفاء في النفس", "أثر مسلم", IslamicArtType.ISLAMIC_STAR)
+    IslamicBannerSlide(1, "islamic_slide_one", IslamicArtType.QURAN_BOOK),
+    IslamicBannerSlide(2, "islamic_slide_two", IslamicArtType.MASJID_HARAM),
+    IslamicBannerSlide(3, "islamic_slide_three", IslamicArtType.MASJID_NABAWI),
+    IslamicBannerSlide(4, "islamic_slide_four", IslamicArtType.DOME_OF_ROCK),
+    IslamicBannerSlide(5, "islamic_slide_five", IslamicArtType.MIHRAB_LIGHT),
+    IslamicBannerSlide(6, "islamic_slide_six", IslamicArtType.QURAN_ILLUMINATED),
+    IslamicBannerSlide(7, "islamic_slide_seven", IslamicArtType.CRESCENT_MINARET),
+    IslamicBannerSlide(8, "islamic_slide_eight", IslamicArtType.ANDALUS_ARCHES),
+    IslamicBannerSlide(9, "islamic_slide_nine", IslamicArtType.TASBIH_PEARLS),
+    IslamicBannerSlide(10, "islamic_slide_ten", IslamicArtType.ISLAMIC_STAR)
 )
 
 @Composable
 fun SkyHeaderDecor(
     title: String,
     subtitleBadge: String,
+    showBannerCarousel: Boolean = false,
     autoSlideEnabled: Boolean = true,
-    onSettingsClick: () -> Unit,
+    soundEnabled: Boolean = true,
+    onSettingsClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
     val slides = remember { getTenIslamicSlides() }
-    var activeIndex by remember { mutableIntStateOf(0) }
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { slides.size })
+    val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(autoSlideEnabled, slides.size) {
-        if (!autoSlideEnabled || slides.isEmpty()) return@LaunchedEffect
+    LaunchedEffect(showBannerCarousel, autoSlideEnabled, slides.size) {
+        if (!showBannerCarousel || !autoSlideEnabled || slides.size <= 1) return@LaunchedEffect
         while (true) {
-            delay(4000L)
-            activeIndex = (activeIndex + 1) % slides.size
+            delay(5000L)
+            val nextPage = (pagerState.currentPage + 1) % slides.size
+            pagerState.animateScrollToPage(
+                page = nextPage,
+                animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing)
+            )
         }
     }
 
-    val currentSlide = slides[activeIndex]
-
     Surface(
         color = scheme.surface,
-        shadowElevation = 4.dp,
+        shadowElevation = 3.dp,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(top = 6.dp, bottom = 10.dp)
+                .padding(top = 8.dp, bottom = if (showBannerCarousel) 10.dp else 8.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = scheme.primaryContainer,
-                        border = BorderStroke(1.2.dp, scheme.outlineVariant),
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        IconButton(onClick = onSettingsClick) {
-                            Icon(
-                                imageVector = Icons.Rounded.Settings,
-                                contentDescription = "الضبط والإعدادات",
-                                tint = scheme.primary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = title,
-                            color = scheme.onSurface,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = subtitleBadge,
-                            color = scheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = scheme.primaryContainer,
-                    border = BorderStroke(1.dp, scheme.tertiary.copy(alpha = 0.8f))
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.AutoAwesome,
-                            contentDescription = null,
-                            tint = scheme.tertiary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = "${activeIndex + 1} / ${slides.size}",
-                            color = scheme.onPrimaryContainer,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Crossfade(
-                targetState = currentSlide,
-                animationSpec = tween(durationMillis = 600),
-                label = "single_banner_crossfade",
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp)
-            ) { slide ->
-                IslamicArtworkBanner(
-                    slide = slide,
-                    onClick = { activeIndex = (activeIndex + 1) % slides.size },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(124.dp)
+            ) {
+                Text(
+                    text = title,
+                    color = scheme.onSurface,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = subtitleBadge,
+                    color = scheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            if (showBannerCarousel) {
+                Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                slides.forEachIndexed { index, _ ->
-                    val isSelected = index == activeIndex
-                    val dotWidth by animateDpAsState(
-                        targetValue = if (isSelected) 22.dp else 7.dp,
-                        animationSpec = tween(300),
-                        label = "dot_width"
+                HorizontalPager(
+                    state = pagerState,
+                    contentPadding = PaddingValues(horizontal = 14.dp),
+                    pageSpacing = 10.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(128.dp)
+                ) { page ->
+                    val slide = slides[page]
+                    IslamicArtworkBanner(
+                        slide = slide,
+                        onClick = {
+                            SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                            val nextPage = (page + 1) % slides.size
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(
+                                    page = nextPage,
+                                    animationSpec = tween(durationMillis = 550, easing = FastOutSlowInEasing)
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
                     )
-                    val dotColor by animateColorAsState(
-                        targetValue = if (isSelected) scheme.primary else scheme.outlineVariant,
-                        animationSpec = tween(300),
-                        label = "dot_color"
-                    )
+                }
 
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .height(7.dp)
-                            .width(dotWidth)
-                            .clip(CircleShape)
-                            .background(dotColor)
-                            .clickable { activeIndex = index }
-                    )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    slides.forEachIndexed { index, _ ->
+                        val isSelected = index == pagerState.currentPage
+                        val dotWidth by animateDpAsState(
+                            targetValue = if (isSelected) 22.dp else 7.dp,
+                            animationSpec = tween(250),
+                            label = "dot_width"
+                        )
+                        val dotColor by animateColorAsState(
+                            targetValue = if (isSelected) scheme.primary else scheme.outlineVariant,
+                            animationSpec = tween(250),
+                            label = "dot_color"
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 3.dp)
+                                .height(7.dp)
+                                .width(dotWidth)
+                                .clip(CircleShape)
+                                .background(dotColor)
+                                .clickable {
+                                    SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(
+                                            page = index,
+                                            animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+                                        )
+                                    }
+                                }
+                        )
+                    }
                 }
             }
         }
@@ -273,8 +240,8 @@ fun IslamicArtworkBanner(
 
     Surface(
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.5.dp, scheme.tertiary.copy(alpha = 0.75f)),
-        shadowElevation = 3.dp,
+        border = BorderStroke(1.4.dp, scheme.tertiary.copy(alpha = 0.7f)),
+        shadowElevation = 2.dp,
         modifier = modifier.then(
             if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
         )
@@ -295,22 +262,9 @@ fun IslamicArtworkBanner(
             if (resId != 0) {
                 Image(
                     painter = painterResource(id = resId),
-                    contentDescription = slide.title,
+                    contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Black.copy(alpha = 0.68f),
-                                    Color.Black.copy(alpha = 0.36f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
                 )
             } else {
                 Canvas(modifier = Modifier.fillMaxSize()) {
@@ -320,44 +274,6 @@ fun IslamicArtworkBanner(
                         lightColor = Color.White
                     )
                 }
-            }
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxWidth(0.62f)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = Color.Black.copy(alpha = 0.35f),
-                    border = BorderStroke(0.8.dp, scheme.tertiary.copy(alpha = 0.65f))
-                ) {
-                    Text(
-                        text = slide.tag,
-                        color = scheme.tertiary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                    )
-                }
-                Text(
-                    text = slide.title,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = slide.subtitle,
-                    color = Color.White.copy(alpha = 0.92f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
         }
     }
@@ -372,18 +288,18 @@ private fun DrawScope.drawIslamicScene(
     val h = size.height
 
     drawCircle(
-        color = lightColor.copy(alpha = 0.06f),
-        radius = h * 0.75f,
-        center = Offset(w * 0.82f, h * 0.5f)
+        color = lightColor.copy(alpha = 0.08f),
+        radius = h * 0.72f,
+        center = Offset(w * 0.5f, h * 0.5f)
     )
     drawCircle(
-        color = goldColor.copy(alpha = 0.14f),
-        radius = h * 0.52f,
-        center = Offset(w * 0.82f, h * 0.5f),
+        color = goldColor.copy(alpha = 0.16f),
+        radius = h * 0.50f,
+        center = Offset(w * 0.5f, h * 0.5f),
         style = Stroke(width = 1.5.dp.toPx())
     )
 
-    val artCenterX = w * 0.80f
+    val artCenterX = w * 0.5f
     val baseY = h * 0.88f
 
     when (artType) {
@@ -434,24 +350,6 @@ private fun DrawScope.drawIslamicScene(
             drawPath(rightPage, color = lightColor.copy(alpha = 0.96f))
             drawPath(leftPage, color = goldColor, style = Stroke(width = 1.6.dp.toPx()))
             drawPath(rightPage, color = goldColor, style = Stroke(width = 1.6.dp.toPx()))
-
-            for (i in 1..3) {
-                val offsetY = (i * 8).dp.toPx()
-                drawLine(
-                    color = goldColor.copy(alpha = 0.75f),
-                    start = Offset(artCenterX - 34.dp.toPx(), baseY - 52.dp.toPx() + offsetY),
-                    end = Offset(artCenterX - 8.dp.toPx(), baseY - 50.dp.toPx() + offsetY),
-                    strokeWidth = 1.5.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    color = goldColor.copy(alpha = 0.75f),
-                    start = Offset(artCenterX + 8.dp.toPx(), baseY - 50.dp.toPx() + offsetY),
-                    end = Offset(artCenterX + 34.dp.toPx(), baseY - 52.dp.toPx() + offsetY),
-                    strokeWidth = 1.5.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-            }
             drawStar8(Offset(artCenterX, h * 0.20f), 11.dp.toPx(), goldColor)
         }
 
