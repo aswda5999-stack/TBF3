@@ -582,7 +582,7 @@ fun AtharMuslimApp(
                         onActionClick = { action ->
                             when (action) {
                                 HomeQuickAction.HADITH -> {
-                                    selectedHadithTopic = HadithTopic.INTENTION
+                                    selectedHadithTopic = HadithTopic.BUKHARI
                                 }
                                 HomeQuickAction.AZKAR -> {
                                     selectedTab = MainBottomTab.AZKAR
