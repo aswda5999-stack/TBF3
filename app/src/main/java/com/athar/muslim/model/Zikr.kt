@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 data class ZikrItem(
     val id: Int,
+    val title: String = "",
     val text: String,
     val count: Int,
     val benefit: String = "",
@@ -22,37 +23,49 @@ enum class AzkarSubCategory(
     val key: String,
     val title: String,
     val subtitle: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val reminderHour: Int,
+    val reminderMinute: Int
 ) {
     MORNING(
         key = "morning",
         title = "أذكار الصباح",
         subtitle = "تبدأ من الفجر وحتى الزوال",
-        icon = Icons.Rounded.WbSunny
+        icon = Icons.Rounded.WbSunny,
+        reminderHour = 7,
+        reminderMinute = 0
     ),
     EVENING(
         key = "evening",
         title = "أذكار المساء",
         subtitle = "تبدأ من العصر وحتى الليل",
-        icon = Icons.Rounded.WbTwilight
+        icon = Icons.Rounded.WbTwilight,
+        reminderHour = 17,
+        reminderMinute = 0
     ),
     SLEEP(
         key = "sleep",
         title = "أذكار النوم",
         subtitle = "تُقال قبل النوم وبعد الاستيقاظ",
-        icon = Icons.Rounded.Bedtime
+        icon = Icons.Rounded.Bedtime,
+        reminderHour = 22,
+        reminderMinute = 0
     ),
     PRAYER(
         key = "prayer",
         title = "أذكار بعد الصلاة",
         subtitle = "عقب الصلوات المكتوبة",
-        icon = Icons.Rounded.Mosque
+        icon = Icons.Rounded.Mosque,
+        reminderHour = 13,
+        reminderMinute = 0
     ),
     GENERAL(
         key = "general",
         title = "أذكار متنوعة",
         subtitle = "تسبيح واستغفار وتهليل",
-        icon = Icons.Rounded.MenuBook
+        icon = Icons.Rounded.MenuBook,
+        reminderHour = 10,
+        reminderMinute = 0
     )
 }
 
@@ -70,22 +83,22 @@ enum class HadithTopic(
         icon = Icons.Rounded.Favorite,
         isFavorites = true
     ),
-    INTENTION(
-        title = "النية والإخلاص",
-        subtitle = "أحاديث في صدق العمل لله",
-        queryTerm = "النية",
+    BUKHARI(
+        title = "صحيح البخاري",
+        subtitle = "مختارات من صحيح الإمام البخاري",
+        queryTerm = "البخاري",
         icon = Icons.Rounded.AutoStories
     ),
-    GOOD_MANNERS(
-        title = "حسن الخلق",
-        subtitle = "أحاديث الرحمة والرفق والكلمة الطيبة",
-        queryTerm = "الخلق",
+    PROPHET(
+        title = "سيرة وهدي النبي ﷺ",
+        subtitle = "أحاديث في أخلاق النبي ﷺ وهديه",
+        queryTerm = "النبي",
         icon = Icons.Rounded.AutoStories
     ),
-    REMEMBRANCE(
-        title = "فضل الذكر",
-        subtitle = "أحاديث التسبيح والذكر والاستغفار",
-        queryTerm = "الذكر",
+    MUSLIM(
+        title = "صحيح مسلم",
+        subtitle = "مختارات من صحيح الإمام مسلم",
+        queryTerm = "مسلم",
         icon = Icons.Rounded.AutoStories
     )
 }
@@ -93,4 +106,5 @@ enum class HadithTopic(
 sealed interface HadithLoadResult {
     data class Success(val items: List<ZikrItem>) : HadithLoadResult
     data class Error(val message: String) : HadithLoadResult
+    data object UnderDevelopment : HadithLoadResult
 }
