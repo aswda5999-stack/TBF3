@@ -475,6 +475,7 @@ fun AtharMuslimApp(
                 title = "أثر مسلم",
                 subtitleBadge = subtitleBadgeText,
                 showBannerCarousel = isHomeDashboard,
+                autoSlideEnabled = isHomeDashboard,
                 soundEnabled = soundEnabled
             )
         },
