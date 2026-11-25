@@ -220,11 +220,9 @@ fun AtharMuslimApp(
             showSettingsScreen -> showSettingsScreen = false
             showExitDialog -> showExitDialog = false
             activeToolPage != null -> activeToolPage = null
+            selectedHadithTopic != null -> selectedHadithTopic = null
             selectedTab == MainBottomTab.AZKAR && selectedAzkarCategory != null -> {
                 selectedAzkarCategory = null
-            }
-            selectedTab == MainBottomTab.HADITH && selectedHadithTopic != null -> {
-                selectedHadithTopic = null
             }
             selectedTab != MainBottomTab.HOME -> {
                 selectedAzkarCategory = null
@@ -280,9 +278,9 @@ fun AtharMuslimApp(
         }
     }
 
-    LaunchedEffect(selectedTab, selectedHadithTopic, retryNonce) {
+    LaunchedEffect(selectedHadithTopic, retryNonce) {
         val topic = selectedHadithTopic
-        if (selectedTab == MainBottomTab.HADITH && topic != null && !topic.isFavorites) {
+        if (topic != null && !topic.isFavorites) {
             isLoadingHadith = true
             hadithLoadState = null
             val res = HadithRepository.loadTopicHadiths(topic)
@@ -491,23 +489,25 @@ fun AtharMuslimApp(
         )
     }
 
-    val subtitleBadgeText = activeToolPage?.title ?: when (selectedTab) {
-        MainBottomTab.HOME -> "الرئيسية • اختصارات سريعة"
-        MainBottomTab.AZKAR -> {
-            val activeCat = selectedAzkarCategory
-            if (activeCat == null) {
-                "أقسام الأذكار"
-            } else {
-                val done = currentAzkarList.count { (countsMap[it.id] ?: it.count) <= 0 }
-                "${activeCat.title} ($done/${currentAzkarList.size})"
+    val subtitleBadgeText = activeToolPage?.title
+        ?: selectedHadithTopic?.title
+        ?: when (selectedTab) {
+            MainBottomTab.HOME -> "الرئيسية • اختصارات سريعة"
+            MainBottomTab.AZKAR -> {
+                val activeCat = selectedAzkarCategory
+                if (activeCat == null) {
+                    "أقسام الأذكار"
+                } else {
+                    val done = currentAzkarList.count { (countsMap[it.id] ?: it.count) <= 0 }
+                    "${activeCat.title} ($done/${currentAzkarList.size})"
+                }
             }
+            MainBottomTab.DUA -> {
+                val done = duasList.count { (countsMap[it.id] ?: it.count) <= 0 }
+                "الأدعية المختارة ($done/${duasList.size})"
+            }
+            MainBottomTab.FOLLOW_US -> "تطبيق أثر مسلم"
         }
-        MainBottomTab.DUA -> {
-            val done = duasList.count { (countsMap[it.id] ?: it.count) <= 0 }
-            "الأدعية المختارة ($done/${duasList.size})"
-        }
-        MainBottomTab.FOLLOW_US -> "تطبيق أثر مسلم"
-    }
 
     Scaffold(
         topBar = {
@@ -543,11 +543,10 @@ fun AtharMuslimApp(
                 QuickToolScreen(
                     page = activeToolPage!!,
                     soundEnabled = soundEnabled,
-                    vibrationEnabled = vibrationEnabled,
                     onOpenMorningAzkar = {
                         activeToolPage = null
                         selectedTab = MainBottomTab.AZKAR
-                        selectedAzkarCategory = AzkarSubCategory.entries.firstOrNull { it.key == "morning" }
+                        selectedAzkarCategory = AzkarSubCategory.MORNING
                     }
                 )
                 return@Box
@@ -583,7 +582,7 @@ fun AtharMuslimApp(
                         onActionClick = { action ->
                             when (action) {
                                 HomeQuickAction.HADITH -> {
-                                    selectedHadithTopic = HadithTopic.entries.firstOrNull { !it.isFavorites }
+                                    selectedHadithTopic = HadithTopic.INTENTION
                                 }
                                 HomeQuickAction.AZKAR -> {
                                     selectedTab = MainBottomTab.AZKAR
@@ -593,7 +592,7 @@ fun AtharMuslimApp(
                                     selectedTab = MainBottomTab.DUA
                                 }
                                 HomeQuickAction.FAVORITES -> {
-                                    selectedHadithTopic = HadithTopic.entries.firstOrNull { it.isFavorites }
+                                    selectedHadithTopic = HadithTopic.FAVORITES
                                 }
                                 HomeQuickAction.TASBIH -> {
                                     activeToolPage = QuickToolPage.TASBIH
@@ -657,7 +656,6 @@ fun AtharMuslimApp(
 private fun QuickToolScreen(
     page: QuickToolPage,
     soundEnabled: Boolean,
-    vibrationEnabled: Boolean,
     onOpenMorningAzkar: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
