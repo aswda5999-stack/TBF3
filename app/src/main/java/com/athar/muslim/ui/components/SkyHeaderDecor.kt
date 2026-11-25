@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,6 +76,7 @@ enum class IslamicArtType {
 
 data class IslamicBannerSlide(
     val id: Int,
+    val drawableName: String,
     val title: String,
     val subtitle: String,
     val tag: String,
@@ -79,16 +84,16 @@ data class IslamicBannerSlide(
 )
 
 fun getTenIslamicSlides(): List<IslamicBannerSlide> = listOf(
-    IslamicBannerSlide(1, "كتاب الله الكريم", "وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا", "القرآن الكريم", IslamicArtType.QURAN_BOOK),
-    IslamicBannerSlide(2, "المسجد الحرام", "قبلة المسلمين ومهوى الأفئدة", "مكة المكرمة", IslamicArtType.MASJID_HARAM),
-    IslamicBannerSlide(3, "المسجد النبوي", "اللهم صلِّ وسلم على نبينا محمد", "المدينة المنورة", IslamicArtType.MASJID_NABAWI),
-    IslamicBannerSlide(4, "قبة الصخرة", "بارك الله في المسجد الأقصى وما حوله", "القدس الشريف", IslamicArtType.DOME_OF_ROCK),
-    IslamicBannerSlide(5, "محراب النور", "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ", "خشوع وطمأنينة", IslamicArtType.MIHRAB_LIGHT),
-    IslamicBannerSlide(6, "المصحف المزخرف", "نورٌ وهدايةٌ للقلوب في كل حين", "آيات بينات", IslamicArtType.QURAN_ILLUMINATED),
-    IslamicBannerSlide(7, "مآذن التوحيد", "حيّ على الصلاة.. حيّ على الفلاح", "نداء السماء", IslamicArtType.CRESCENT_MINARET),
-    IslamicBannerSlide(8, "أقواس العراقة", "عمارة إسلامية تجمع الجمال والسكينة", "فن إسلامي", IslamicArtType.ANDALUS_ARCHES),
-    IslamicBannerSlide(9, "سبحة الذاكرين", "سبحان الله وبحمده، سبحان الله العظيم", "ذكر وتسبيح", IslamicArtType.TASBIH_PEARLS),
-    IslamicBannerSlide(10, "نجمة الهدى", "زخرفة هندسية تبعث الصفاء في النفس", "أثر مسلم", IslamicArtType.ISLAMIC_STAR)
+    IslamicBannerSlide(1, "islamic_slide_one", "كتاب الله الكريم", "وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا", "القرآن الكريم", IslamicArtType.QURAN_BOOK),
+    IslamicBannerSlide(2, "islamic_slide_two", "المسجد الحرام", "قبلة المسلمين ومهوى الأفئدة", "مكة المكرمة", IslamicArtType.MASJID_HARAM),
+    IslamicBannerSlide(3, "islamic_slide_three", "المسجد النبوي", "اللهم صلِّ وسلم على نبينا محمد", "المدينة المنورة", IslamicArtType.MASJID_NABAWI),
+    IslamicBannerSlide(4, "islamic_slide_four", "قبة الصخرة", "بارك الله في المسجد الأقصى وما حوله", "القدس الشريف", IslamicArtType.DOME_OF_ROCK),
+    IslamicBannerSlide(5, "islamic_slide_five", "محراب النور", "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ", "خشوع وطمأنينة", IslamicArtType.MIHRAB_LIGHT),
+    IslamicBannerSlide(6, "islamic_slide_six", "المصحف المزخرف", "نورٌ وهدايةٌ للقلوب في كل حين", "آيات بينات", IslamicArtType.QURAN_ILLUMINATED),
+    IslamicBannerSlide(7, "islamic_slide_seven", "مآذن التوحيد", "حيّ على الصلاة.. حيّ على الفلاح", "نداء السماء", IslamicArtType.CRESCENT_MINARET),
+    IslamicBannerSlide(8, "islamic_slide_eight", "أقواس العراقة", "عمارة إسلامية تجمع الجمال والسكينة", "فن إسلامي", IslamicArtType.ANDALUS_ARCHES),
+    IslamicBannerSlide(9, "islamic_slide_nine", "سبحة الذاكرين", "سبحان الله وبحمده، سبحان الله العظيم", "ذكر وتسبيح", IslamicArtType.TASBIH_PEARLS),
+    IslamicBannerSlide(10, "islamic_slide_ten", "نجمة الهدى", "زخرفة هندسية تبعث الصفاء في النفس", "أثر مسلم", IslamicArtType.ISLAMIC_STAR)
 )
 
 @Composable
@@ -260,7 +265,12 @@ fun IslamicArtworkBanner(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val scheme = MaterialTheme.colorScheme
+    val resId = remember(slide.drawableName) {
+        context.resources.getIdentifier(slide.drawableName, "drawable", context.packageName)
+    }
+
     Surface(
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.5.dp, scheme.tertiary.copy(alpha = 0.75f)),
@@ -282,25 +292,47 @@ fun IslamicArtworkBanner(
                     )
                 )
         ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawIslamicScene(
-                    artType = slide.artType,
-                    goldColor = scheme.tertiary,
-                    lightColor = Color.White
+            if (resId != 0) {
+                Image(
+                    painter = painterResource(id = resId),
+                    contentDescription = slide.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.68f),
+                                    Color.Black.copy(alpha = 0.36f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+            } else {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawIslamicScene(
+                        artType = slide.artType,
+                        goldColor = scheme.tertiary,
+                        lightColor = Color.White
+                    )
+                }
             }
 
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .fillMaxWidth(0.60f)
+                    .fillMaxWidth(0.62f)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color.Black.copy(alpha = 0.26f),
-                    border = BorderStroke(0.8.dp, scheme.tertiary.copy(alpha = 0.6f))
+                    color = Color.Black.copy(alpha = 0.35f),
+                    border = BorderStroke(0.8.dp, scheme.tertiary.copy(alpha = 0.65f))
                 ) {
                     Text(
                         text = slide.tag,
@@ -320,7 +352,7 @@ fun IslamicArtworkBanner(
                 )
                 Text(
                     text = slide.subtitle,
-                    color = Color.White.copy(alpha = 0.90f),
+                    color = Color.White.copy(alpha = 0.92f),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
