@@ -3,7 +3,6 @@ package com.athar.muslim
 import android.Manifest
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -38,7 +37,6 @@ import androidx.compose.material.icons.rounded.Construction
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Mosque
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -153,7 +151,6 @@ fun AtharMuslimApp(
     var soundEnabled by remember { mutableStateOf(prefs.getBoolean("sound_enabled", true)) }
     var vibrationEnabled by remember { mutableStateOf(prefs.getBoolean("vibration_enabled", true)) }
     var remindersEnabled by remember { mutableStateOf(prefs.getBoolean("reminders_enabled", true)) }
-    var autoSlideEnabled by remember { mutableStateOf(prefs.getBoolean("auto_slide_enabled", true)) }
     var fontScaleStep by remember { mutableIntStateOf(prefs.getInt("font_scale_step", 1)) }
 
     var selectedTab by remember { mutableStateOf(MainBottomTab.HOME) }
@@ -163,7 +160,6 @@ fun AtharMuslimApp(
     var hadithLoadState by remember { mutableStateOf<HadithLoadResult?>(null) }
     var isLoadingHadith by remember { mutableStateOf(false) }
     var retryNonce by remember { mutableIntStateOf(0) }
-    var showSettingsScreen by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
 
     val favoriteHadiths = remember { mutableStateMapOf<Int, ZikrItem>() }
@@ -216,8 +212,8 @@ fun AtharMuslimApp(
     }
 
     BackHandler(enabled = true) {
+        SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
         when {
-            showSettingsScreen -> showSettingsScreen = false
             showExitDialog -> showExitDialog = false
             activeToolPage != null -> activeToolPage = null
             selectedHadithTopic != null -> selectedHadithTopic = null
@@ -296,47 +292,6 @@ fun AtharMuslimApp(
         }
     }
 
-    if (showSettingsScreen) {
-        SettingsScreen(
-            selectedTheme = selectedTheme,
-            onSelectTheme = onSelectTheme,
-            autoSlideEnabled = autoSlideEnabled,
-            onToggleAutoSlide = { enabled ->
-                autoSlideEnabled = enabled
-                prefs.edit().putBoolean("auto_slide_enabled", enabled).apply()
-            },
-            remindersEnabled = remindersEnabled,
-            onToggleReminders = { checked ->
-                remindersEnabled = checked
-                prefs.edit().putBoolean("reminders_enabled", checked).apply()
-                if (checked) {
-                    AzkarReminderReceiver.scheduleAllDailyReminders(context)
-                }
-            },
-            soundEnabled = soundEnabled,
-            onToggleSound = { checked ->
-                soundEnabled = checked
-                prefs.edit().putBoolean("sound_enabled", checked).apply()
-                if (checked) {
-                    SoundHelper.playTapSound(enabled = true, isCompletion = false)
-                }
-            },
-            vibrationEnabled = vibrationEnabled,
-            onToggleVibration = { checked ->
-                vibrationEnabled = checked
-                prefs.edit().putBoolean("vibration_enabled", checked).apply()
-            },
-            fontScaleStep = fontScaleStep,
-            onChangeFontScale = { step ->
-                fontScaleStep = step
-                prefs.edit().putInt("font_scale_step", step).apply()
-            },
-            onResetAllCounts = { resetAllCountsToDefault() },
-            onBack = { showSettingsScreen = false }
-        )
-        return
-    }
-
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
@@ -361,6 +316,7 @@ fun AtharMuslimApp(
             confirmButton = {
                 Button(
                     onClick = {
+                        SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
                         showExitDialog = false
                         activity?.finishAffinity()
                     },
@@ -489,10 +445,14 @@ fun AtharMuslimApp(
         )
     }
 
+    val isHomeDashboard = selectedTab == MainBottomTab.HOME &&
+        activeToolPage == null &&
+        selectedHadithTopic == null
+
     val subtitleBadgeText = activeToolPage?.title
         ?: selectedHadithTopic?.title
         ?: when (selectedTab) {
-            MainBottomTab.HOME -> "الرئيسية • اختصارات سريعة"
+            MainBottomTab.HOME -> "الرئيسية"
             MainBottomTab.AZKAR -> {
                 val activeCat = selectedAzkarCategory
                 if (activeCat == null) {
@@ -506,7 +466,7 @@ fun AtharMuslimApp(
                 val done = duasList.count { (countsMap[it.id] ?: it.count) <= 0 }
                 "الأدعية المختارة ($done/${duasList.size})"
             }
-            MainBottomTab.FOLLOW_US -> "تطبيق أثر مسلم"
+            MainBottomTab.SETTINGS -> "الضبط والإعدادات"
         }
 
     Scaffold(
@@ -514,13 +474,14 @@ fun AtharMuslimApp(
             SkyHeaderDecor(
                 title = "أثر مسلم",
                 subtitleBadge = subtitleBadgeText,
-                autoSlideEnabled = autoSlideEnabled,
-                onSettingsClick = { showSettingsScreen = true }
+                showBannerCarousel = isHomeDashboard,
+                soundEnabled = soundEnabled
             )
         },
         bottomBar = {
             SkyBottomBar(
                 selectedTab = selectedTab,
+                soundEnabled = soundEnabled,
                 onTabSelected = { tab ->
                     selectedTab = tab
                     activeToolPage = null
@@ -579,6 +540,7 @@ fun AtharMuslimApp(
                 MainBottomTab.HOME -> {
                     HomeDashboardScreen(
                         favoritesCount = favoriteHadiths.size,
+                        soundEnabled = soundEnabled,
                         onActionClick = { action ->
                             when (action) {
                                 HomeQuickAction.HADITH -> {
@@ -617,6 +579,7 @@ fun AtharMuslimApp(
                         AzkarCategoriesVerticalList(
                             categories = subCategories,
                             countsMap = countsMap,
+                            soundEnabled = soundEnabled,
                             onSelectCategory = { cat -> selectedAzkarCategory = cat }
                         )
                     } else {
@@ -644,8 +607,36 @@ fun AtharMuslimApp(
                     )
                 }
 
-                MainBottomTab.FOLLOW_US -> {
-                    FollowUsCardScreen()
+                MainBottomTab.SETTINGS -> {
+                    SettingsScreen(
+                        selectedTheme = selectedTheme,
+                        onSelectTheme = onSelectTheme,
+                        remindersEnabled = remindersEnabled,
+                        onToggleReminders = { checked ->
+                            remindersEnabled = checked
+                            prefs.edit().putBoolean("reminders_enabled", checked).apply()
+                            if (checked) {
+                                AzkarReminderReceiver.scheduleAllDailyReminders(context)
+                            }
+                        },
+                        soundEnabled = soundEnabled,
+                        onToggleSound = { checked ->
+                            soundEnabled = checked
+                            prefs.edit().putBoolean("sound_enabled", checked).apply()
+                        },
+                        vibrationEnabled = vibrationEnabled,
+                        onToggleVibration = { checked ->
+                            vibrationEnabled = checked
+                            prefs.edit().putBoolean("vibration_enabled", checked).apply()
+                        },
+                        fontScaleStep = fontScaleStep,
+                        onChangeFontScale = { step ->
+                            fontScaleStep = step
+                            prefs.edit().putInt("font_scale_step", step).apply()
+                        },
+                        onResetAllCounts = { resetAllCountsToDefault() },
+                        onBackToHome = { selectedTab = MainBottomTab.HOME }
+                    )
                 }
             }
         }
@@ -719,7 +710,10 @@ private fun QuickToolScreen(
                                 listOf(33, 100, 1000).forEach { goal ->
                                     val selected = targetGoal == goal
                                     Surface(
-                                        onClick = { targetGoal = goal },
+                                        onClick = {
+                                            SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                            targetGoal = goal
+                                        },
                                         shape = RoundedCornerShape(50),
                                         color = if (selected) scheme.primary else scheme.primaryContainer
                                     ) {
@@ -753,7 +747,10 @@ private fun QuickToolScreen(
                                 }
 
                                 Button(
-                                    onClick = { tasbihCount = 0 },
+                                    onClick = {
+                                        SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                        tasbihCount = 0
+                                    },
                                     colors = ButtonDefaults.buttonColors(containerColor = scheme.primaryContainer),
                                     shape = RoundedCornerShape(14.dp),
                                     modifier = Modifier.weight(1f).height(48.dp)
@@ -841,7 +838,10 @@ private fun QuickToolScreen(
                                 textAlign = TextAlign.Center
                             )
                             Button(
-                                onClick = onOpenMorningAzkar,
+                                onClick = {
+                                    SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                    onOpenMorningAzkar()
+                                },
                                 colors = ButtonDefaults.buttonColors(containerColor = scheme.primary),
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.fillMaxWidth()
@@ -860,6 +860,7 @@ private fun QuickToolScreen(
 private fun AzkarCategoriesVerticalList(
     categories: List<AzkarSubCategory>,
     countsMap: Map<Int, Int>,
+    soundEnabled: Boolean,
     onSelectCategory: (AzkarSubCategory) -> Unit
 ) {
     val context = LocalContext.current
@@ -881,7 +882,10 @@ private fun AzkarCategoriesVerticalList(
             val isCategoryCompleted = totalCount > 0 && doneCount >= totalCount
 
             Card(
-                onClick = { onSelectCategory(category) },
+                onClick = {
+                    SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                    onSelectCategory(category)
+                },
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = scheme.surface),
                 border = BorderStroke(
@@ -1129,7 +1133,10 @@ private fun HadithTopicDetailScreen(
                                 textAlign = TextAlign.Center
                             )
                             Button(
-                                onClick = onRetry,
+                                onClick = {
+                                    SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                    onRetry()
+                                },
                                 colors = ButtonDefaults.buttonColors(containerColor = scheme.primary)
                             ) {
                                 Text("إعادة المحاولة", color = scheme.onPrimary, fontWeight = FontWeight.Bold)
@@ -1176,66 +1183,6 @@ private fun ItemsCardsList(
                 vibrationEnabled = vibrationEnabled,
                 fontScaleStep = fontScaleStep
             )
-        }
-    }
-}
-
-@Composable
-private fun FollowUsCardScreen() {
-    val scheme = MaterialTheme.colorScheme
-    val context = LocalContext.current
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Card(
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = scheme.surface),
-            border = BorderStroke(1.8.dp, scheme.outlineVariant),
-            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "أثر مسلم",
-                    color = scheme.primary,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Text(
-                    text = "رفيقك اليومي للأذكار والأدعية والأحاديث. شارك التطبيق مع من تحب ليكون لك أجر ونشر للخير.",
-                    color = scheme.onBackground,
-                    fontSize = 14.5.sp,
-                    lineHeight = 24.sp,
-                    textAlign = TextAlign.Center
-                )
-                Button(
-                    onClick = {
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(
-                                Intent.EXTRA_TEXT,
-                                "تطبيق أثر مسلم — للأذكار والأدعية والأحاديث النبوية."
-                            )
-                        }
-                        context.startActivity(Intent.createChooser(shareIntent, "مشاركة أثر مسلم"))
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = scheme.primary),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Rounded.Share, contentDescription = null, tint = scheme.onPrimary)
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text("مشاركة أثر مسلم", color = scheme.onPrimary, fontWeight = FontWeight.Bold)
-                }
-            }
         }
     }
 }
