@@ -59,7 +59,7 @@ enum class HomeQuickAction(
 @Composable
 fun HomeDashboardScreen(
     favoritesCount: Int,
-    soundEnabled: Boolean,
+    soundEnabled: Boolean = true,
     onActionClick: (HomeQuickAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
