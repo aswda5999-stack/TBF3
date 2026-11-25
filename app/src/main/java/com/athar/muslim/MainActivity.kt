@@ -151,6 +151,7 @@ fun AtharMuslimApp(
     var soundEnabled by remember { mutableStateOf(prefs.getBoolean("sound_enabled", true)) }
     var vibrationEnabled by remember { mutableStateOf(prefs.getBoolean("vibration_enabled", true)) }
     var remindersEnabled by remember { mutableStateOf(prefs.getBoolean("reminders_enabled", true)) }
+    var autoSlideEnabled by remember { mutableStateOf(prefs.getBoolean("auto_slide_enabled", true)) }
     var fontScaleStep by remember { mutableIntStateOf(prefs.getInt("font_scale_step", 1)) }
 
     var selectedTab by remember { mutableStateOf(MainBottomTab.HOME) }
@@ -160,6 +161,7 @@ fun AtharMuslimApp(
     var hadithLoadState by remember { mutableStateOf<HadithLoadResult?>(null) }
     var isLoadingHadith by remember { mutableStateOf(false) }
     var retryNonce by remember { mutableIntStateOf(0) }
+    var showSettingsScreen by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
 
     val favoriteHadiths = remember { mutableStateMapOf<Int, ZikrItem>() }
@@ -214,6 +216,7 @@ fun AtharMuslimApp(
     BackHandler(enabled = true) {
         SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
         when {
+            showSettingsScreen -> showSettingsScreen = false
             showExitDialog -> showExitDialog = false
             activeToolPage != null -> activeToolPage = null
             selectedHadithTopic != null -> selectedHadithTopic = null
@@ -290,6 +293,47 @@ fun AtharMuslimApp(
             hadithLoadState = res
             isLoadingHadith = false
         }
+    }
+
+    if (showSettingsScreen) {
+        SettingsScreen(
+            selectedTheme = selectedTheme,
+            onSelectTheme = onSelectTheme,
+            autoSlideEnabled = autoSlideEnabled,
+            onToggleAutoSlide = { enabled ->
+                autoSlideEnabled = enabled
+                prefs.edit().putBoolean("auto_slide_enabled", enabled).apply()
+            },
+            remindersEnabled = remindersEnabled,
+            onToggleReminders = { checked ->
+                remindersEnabled = checked
+                prefs.edit().putBoolean("reminders_enabled", checked).apply()
+                if (checked) {
+                    AzkarReminderReceiver.scheduleAllDailyReminders(context)
+                }
+            },
+            soundEnabled = soundEnabled,
+            onToggleSound = { checked ->
+                soundEnabled = checked
+                prefs.edit().putBoolean("sound_enabled", checked).apply()
+                if (checked) {
+                    SoundHelper.playTapSound(enabled = true, isCompletion = false)
+                }
+            },
+            vibrationEnabled = vibrationEnabled,
+            onToggleVibration = { checked ->
+                vibrationEnabled = checked
+                prefs.edit().putBoolean("vibration_enabled", checked).apply()
+            },
+            fontScaleStep = fontScaleStep,
+            onChangeFontScale = { step ->
+                fontScaleStep = step
+                prefs.edit().putInt("font_scale_step", step).apply()
+            },
+            onResetAllCounts = { resetAllCountsToDefault() },
+            onBack = { showSettingsScreen = false }
+        )
+        return
     }
 
     if (showExitDialog) {
@@ -452,7 +496,7 @@ fun AtharMuslimApp(
     val subtitleBadgeText = activeToolPage?.title
         ?: selectedHadithTopic?.title
         ?: when (selectedTab) {
-            MainBottomTab.HOME -> "الرئيسية"
+            MainBottomTab.HOME -> "الرئيسية • اختصارات سريعة"
             MainBottomTab.AZKAR -> {
                 val activeCat = selectedAzkarCategory
                 if (activeCat == null) {
@@ -474,20 +518,23 @@ fun AtharMuslimApp(
             SkyHeaderDecor(
                 title = "أثر مسلم",
                 subtitleBadge = subtitleBadgeText,
-                showBannerCarousel = isHomeDashboard,
-                soundEnabled = soundEnabled
+                autoSlideEnabled = isHomeDashboard && autoSlideEnabled,
+                onSettingsClick = { showSettingsScreen = true }
             )
         },
         bottomBar = {
             SkyBottomBar(
                 selectedTab = selectedTab,
-                soundEnabled = soundEnabled,
                 onTabSelected = { tab ->
-                    selectedTab = tab
-                    activeToolPage = null
-                    selectedHadithTopic = null
-                    if (tab != MainBottomTab.AZKAR) {
-                        selectedAzkarCategory = null
+                    if (tab == MainBottomTab.SETTINGS) {
+                        showSettingsScreen = true
+                    } else {
+                        selectedTab = tab
+                        activeToolPage = null
+                        selectedHadithTopic = null
+                        if (tab != MainBottomTab.AZKAR) {
+                            selectedAzkarCategory = null
+                        }
                     }
                 }
             )
@@ -540,7 +587,6 @@ fun AtharMuslimApp(
                 MainBottomTab.HOME -> {
                     HomeDashboardScreen(
                         favoritesCount = favoriteHadiths.size,
-                        soundEnabled = soundEnabled,
                         onActionClick = { action ->
                             when (action) {
                                 HomeQuickAction.HADITH -> {
@@ -608,34 +654,9 @@ fun AtharMuslimApp(
                 }
 
                 MainBottomTab.SETTINGS -> {
-                    SettingsScreen(
-                        selectedTheme = selectedTheme,
-                        onSelectTheme = onSelectTheme,
-                        remindersEnabled = remindersEnabled,
-                        onToggleReminders = { checked ->
-                            remindersEnabled = checked
-                            prefs.edit().putBoolean("reminders_enabled", checked).apply()
-                            if (checked) {
-                                AzkarReminderReceiver.scheduleAllDailyReminders(context)
-                            }
-                        },
-                        soundEnabled = soundEnabled,
-                        onToggleSound = { checked ->
-                            soundEnabled = checked
-                            prefs.edit().putBoolean("sound_enabled", checked).apply()
-                        },
-                        vibrationEnabled = vibrationEnabled,
-                        onToggleVibration = { checked ->
-                            vibrationEnabled = checked
-                            prefs.edit().putBoolean("vibration_enabled", checked).apply()
-                        },
-                        fontScaleStep = fontScaleStep,
-                        onChangeFontScale = { step ->
-                            fontScaleStep = step
-                            prefs.edit().putInt("font_scale_step", step).apply()
-                        },
-                        onResetAllCounts = { resetAllCountsToDefault() },
-                        onBackToHome = { selectedTab = MainBottomTab.HOME }
+                    HomeDashboardScreen(
+                        favoritesCount = favoriteHadiths.size,
+                        onActionClick = {}
                     )
                 }
             }
