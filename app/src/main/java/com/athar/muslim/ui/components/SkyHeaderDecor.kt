@@ -1,9 +1,13 @@
 package com.athar.muslim.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -12,7 +16,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,8 +24,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -31,8 +32,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +55,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -101,20 +102,17 @@ fun SkyHeaderDecor(
 ) {
     val scheme = MaterialTheme.colorScheme
     val slides = remember { getTenIslamicSlides() }
-    val pagerState = rememberPagerState(initialPage = 0, pageCount = { slides.size })
-    val coroutineScope = rememberCoroutineScope()
+    var activeIndex by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(showBannerCarousel, autoSlideEnabled, slides.size) {
         if (!showBannerCarousel || !autoSlideEnabled || slides.size <= 1) return@LaunchedEffect
         while (true) {
             delay(5000L)
-            val nextPage = (pagerState.currentPage + 1) % slides.size
-            pagerState.animateScrollToPage(
-                page = nextPage,
-                animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing)
-            )
+            activeIndex = (activeIndex + 1) % slides.size
         }
     }
+
+    val currentSlide = slides[activeIndex]
 
     Surface(
         color = scheme.surface,
@@ -153,28 +151,31 @@ fun SkyHeaderDecor(
             if (showBannerCarousel) {
                 Spacer(modifier = Modifier.height(10.dp))
 
-                HorizontalPager(
-                    state = pagerState,
-                    contentPadding = PaddingValues(horizontal = 14.dp),
-                    pageSpacing = 10.dp,
+                AnimatedContent(
+                    targetState = currentSlide,
+                    transitionSpec = {
+                        slideInHorizontally(
+                            initialOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
+                        ) togetherWith slideOutHorizontally(
+                            targetOffsetX = { fullWidth -> -fullWidth },
+                            animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    label = "slide_carousel",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(128.dp)
-                ) { page ->
-                    val slide = slides[page]
+                        .padding(horizontal = 14.dp)
+                ) { slide ->
                     IslamicArtworkBanner(
                         slide = slide,
                         onClick = {
                             SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                            val nextPage = (page + 1) % slides.size
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(
-                                    page = nextPage,
-                                    animationSpec = tween(durationMillis = 550, easing = FastOutSlowInEasing)
-                                )
-                            }
+                            activeIndex = (activeIndex + 1) % slides.size
                         },
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(128.dp)
                     )
                 }
 
@@ -188,7 +189,7 @@ fun SkyHeaderDecor(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     slides.forEachIndexed { index, _ ->
-                        val isSelected = index == pagerState.currentPage
+                        val isSelected = index == activeIndex
                         val dotWidth by animateDpAsState(
                             targetValue = if (isSelected) 22.dp else 7.dp,
                             animationSpec = tween(250),
@@ -209,12 +210,7 @@ fun SkyHeaderDecor(
                                 .background(dotColor)
                                 .clickable {
                                     SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                    coroutineScope.launch {
-                                        pagerState.animateScrollToPage(
-                                            page = index,
-                                            animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
-                                        )
-                                    }
+                                    activeIndex = index
                                 }
                         )
                     }
