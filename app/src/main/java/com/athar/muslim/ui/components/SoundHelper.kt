@@ -12,12 +12,12 @@ object SoundHelper {
     private fun getGenerator(): ToneGenerator? {
         if (toneGenerator != null) return toneGenerator
         return try {
-            ToneGenerator(AudioManager.STREAM_MUSIC, 75).also {
+            ToneGenerator(AudioManager.STREAM_MUSIC, 80).also {
                 toneGenerator = it
             }
         } catch (_: Exception) {
             try {
-                ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75).also {
+                ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80).also {
                     toneGenerator = it
                 }
             } catch (_: Exception) {
@@ -37,7 +37,7 @@ object SoundHelper {
                     gen.startTone(ToneGenerator.TONE_PROP_BEEP, 55)
                 }
             } catch (_: Exception) {
-                // تجاهل أي استثناء صوتي مؤقت على الجهاز
+                // تجاهل أي خطأ صوتي مؤقت على الجهاز
             }
         }
     }
