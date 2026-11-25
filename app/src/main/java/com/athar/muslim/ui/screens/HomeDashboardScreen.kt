@@ -40,51 +40,51 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.athar.muslim.ui.components.SoundHelper
 
 enum class HomeQuickAction(
     val title: String,
-    val badge: String?,
     val icon: ImageVector
 ) {
-    HADITH("الأحاديث", null, Icons.Rounded.AutoStories),
-    AZKAR("الأذكار", null, Icons.Rounded.MenuBook),
-    DUA("الأدعية", null, Icons.Rounded.SelfImprovement),
-    FAVORITES("المفضلة", null, Icons.Rounded.Favorite),
-    TASBIH("المسبحة", null, Icons.Rounded.RadioButtonChecked),
-    QIBLA("البوصلة", null, Icons.Rounded.Explore),
-    PRAYER_GUIDE("تعلم الصلاة", null, Icons.Rounded.Mosque),
-    MORNING_FOCUS("ورد اليوم", "مختار", Icons.Rounded.WbSunny)
+    HADITH("الأحاديث", Icons.Rounded.AutoStories),
+    AZKAR("الأذكار", Icons.Rounded.MenuBook),
+    DUA("الأدعية", Icons.Rounded.SelfImprovement),
+    FAVORITES("المفضلة", Icons.Rounded.Favorite),
+    TASBIH("المسبحة", Icons.Rounded.RadioButtonChecked),
+    QIBLA("البوصلة", Icons.Rounded.Explore),
+    PRAYER_GUIDE("تعلم الصلاة", Icons.Rounded.Mosque),
+    MORNING_FOCUS("ورد اليوم", Icons.Rounded.WbSunny)
 }
 
 @Composable
 fun HomeDashboardScreen(
     favoritesCount: Int,
+    soundEnabled: Boolean,
     onActionClick: (HomeQuickAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
-    val actions = HomeQuickAction.entries
-    val rows = actions.chunked(4)
+    val rows = HomeQuickAction.entries.chunked(4)
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .background(scheme.background)
             .padding(horizontal = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(top = 12.dp, bottom = 20.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(top = 10.dp, bottom = 18.dp)
     ) {
         item {
             Card(
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                border = BorderStroke(1.2.dp, scheme.outlineVariant),
+                border = BorderStroke(1.dp, scheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -92,13 +92,13 @@ fun HomeDashboardScreen(
                         Text(
                             text = "الخدمات السريعة",
                             color = scheme.onSurface,
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
-                            text = "وصول مباشر للأقسام والأدوات اليومية",
+                            text = "وصول سريع ومباشر للأقسام والأدوات",
                             color = scheme.onSurfaceVariant,
-                            fontSize = 11.5.sp
+                            fontSize = 11.sp
                         )
                     }
                     Surface(
@@ -126,11 +126,13 @@ fun HomeDashboardScreen(
                 rowItems.forEach { action ->
                     QuickGridButton(
                         action = action,
-                        onClick = { onActionClick(action) },
+                        onClick = {
+                            SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                            onActionClick(action)
+                        },
                         modifier = Modifier.weight(1f)
                     )
                 }
-                // إكمال الصف إلى 4 أعمدة إذا كان عدد العناصر أقل من 4
                 repeat(4 - rowItems.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -148,16 +150,16 @@ private fun QuickGridButton(
     val scheme = MaterialTheme.colorScheme
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(15.dp),
         colors = CardDefaults.cardColors(containerColor = scheme.surface),
-        border = BorderStroke(1.2.dp, scheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = modifier.height(98.dp)
+        border = BorderStroke(1.dp, scheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+        modifier = modifier.height(94.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 4.dp, vertical = 8.dp),
+                .padding(horizontal = 4.dp, vertical = 7.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -165,14 +167,14 @@ private fun QuickGridButton(
                 shape = CircleShape,
                 color = scheme.primaryContainer,
                 border = BorderStroke(1.dp, scheme.outlineVariant),
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(36.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = action.icon,
                         contentDescription = action.title,
                         tint = scheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(19.dp)
                     )
                 }
             }
@@ -180,7 +182,7 @@ private fun QuickGridButton(
             Text(
                 text = action.title,
                 color = scheme.onSurface,
-                fontSize = 11.5.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -189,4 +191,3 @@ private fun QuickGridButton(
         }
     }
 }
-
