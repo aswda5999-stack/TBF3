@@ -3,6 +3,7 @@ package com.athar.muslim
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -30,9 +31,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.Construction
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.Mosque
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -76,17 +82,11 @@ import com.athar.muslim.ui.components.SkyBottomBar
 import com.athar.muslim.ui.components.SkyHeaderDecor
 import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.components.ZikrCard
+import com.athar.muslim.ui.screens.HomeDashboardScreen
+import com.athar.muslim.ui.screens.HomeQuickAction
 import com.athar.muslim.ui.screens.SettingsScreen
 import com.athar.muslim.ui.theme.AppThemePreset
 import com.athar.muslim.ui.theme.AtharMuslimTheme
-import com.athar.muslim.ui.theme.BlueRoyal
-import com.athar.muslim.ui.theme.GoldAccent
-import com.athar.muslim.ui.theme.NavyDark
-import com.athar.muslim.ui.theme.SkyBackground
-import com.athar.muslim.ui.theme.SkyBorder
-import com.athar.muslim.ui.theme.SkyContainer
-import com.athar.muslim.ui.theme.SkySurface
-import com.athar.muslim.ui.theme.TextBody
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -95,6 +95,13 @@ private enum class PermissionStep {
     NONE,
     NOTIFICATIONS,
     EXACT_ALARM
+}
+
+private enum class QuickToolPage(val title: String) {
+    TASBIH("المسبحة الإلكترونية"),
+    QIBLA("بوصلة القبلة"),
+    PRAYER_GUIDE("تعلم الصلاة"),
+    MORNING_FOCUS("ورد اليوم")
 }
 
 private fun todayKey(): String {
@@ -149,7 +156,8 @@ fun AtharMuslimApp(
     var autoSlideEnabled by remember { mutableStateOf(prefs.getBoolean("auto_slide_enabled", true)) }
     var fontScaleStep by remember { mutableIntStateOf(prefs.getInt("font_scale_step", 1)) }
 
-    var selectedTab by remember { mutableStateOf(MainBottomTab.AZKAR) }
+    var selectedTab by remember { mutableStateOf(MainBottomTab.HOME) }
+    var activeToolPage by remember { mutableStateOf<QuickToolPage?>(null) }
     var selectedAzkarCategory by remember { mutableStateOf<AzkarSubCategory?>(null) }
     var selectedHadithTopic by remember { mutableStateOf<HadithTopic?>(null) }
     var hadithLoadState by remember { mutableStateOf<HadithLoadResult?>(null) }
@@ -211,16 +219,18 @@ fun AtharMuslimApp(
         when {
             showSettingsScreen -> showSettingsScreen = false
             showExitDialog -> showExitDialog = false
+            activeToolPage != null -> activeToolPage = null
             selectedTab == MainBottomTab.AZKAR && selectedAzkarCategory != null -> {
                 selectedAzkarCategory = null
             }
             selectedTab == MainBottomTab.HADITH && selectedHadithTopic != null -> {
                 selectedHadithTopic = null
             }
-            selectedTab != MainBottomTab.AZKAR -> {
+            selectedTab != MainBottomTab.HOME -> {
                 selectedAzkarCategory = null
                 selectedHadithTopic = null
-                selectedTab = MainBottomTab.AZKAR
+                activeToolPage = null
+                selectedTab = MainBottomTab.HOME
             }
             else -> {
                 showExitDialog = true
@@ -481,7 +491,8 @@ fun AtharMuslimApp(
         )
     }
 
-    val subtitleBadgeText = when (selectedTab) {
+    val subtitleBadgeText = activeToolPage?.title ?: when (selectedTab) {
+        MainBottomTab.HOME -> "الرئيسية • اختصارات سريعة"
         MainBottomTab.AZKAR -> {
             val activeCat = selectedAzkarCategory
             if (activeCat == null) {
@@ -495,7 +506,6 @@ fun AtharMuslimApp(
             val done = duasList.count { (countsMap[it.id] ?: it.count) <= 0 }
             "الأدعية المختارة ($done/${duasList.size})"
         }
-        MainBottomTab.HADITH -> selectedHadithTopic?.title ?: "أبواب الأحاديث"
         MainBottomTab.FOLLOW_US -> "تطبيق أثر مسلم"
     }
 
@@ -513,11 +523,10 @@ fun AtharMuslimApp(
                 selectedTab = selectedTab,
                 onTabSelected = { tab ->
                     selectedTab = tab
+                    activeToolPage = null
+                    selectedHadithTopic = null
                     if (tab != MainBottomTab.AZKAR) {
                         selectedAzkarCategory = null
-                    }
-                    if (tab != MainBottomTab.HADITH) {
-                        selectedHadithTopic = null
                     }
                 }
             )
@@ -530,7 +539,79 @@ fun AtharMuslimApp(
                 .background(scheme.background)
                 .padding(innerPadding)
         ) {
+            if (activeToolPage != null) {
+                QuickToolScreen(
+                    page = activeToolPage!!,
+                    soundEnabled = soundEnabled,
+                    vibrationEnabled = vibrationEnabled,
+                    onOpenMorningAzkar = {
+                        activeToolPage = null
+                        selectedTab = MainBottomTab.AZKAR
+                        selectedAzkarCategory = AzkarSubCategory.entries.firstOrNull { it.key == "morning" }
+                    }
+                )
+                return@Box
+            }
+
+            if (selectedHadithTopic != null) {
+                HadithTopicDetailScreen(
+                    topic = selectedHadithTopic!!,
+                    isLoading = isLoadingHadith,
+                    loadResult = hadithLoadState,
+                    favoriteMap = favoriteHadiths,
+                    countsMap = countsMap,
+                    soundEnabled = soundEnabled,
+                    vibrationEnabled = vibrationEnabled,
+                    fontScaleStep = fontScaleStep,
+                    onRetry = { retryNonce++ },
+                    onToggleFavorite = { hadithItem ->
+                        if (favoriteHadiths.containsKey(hadithItem.id)) {
+                            favoriteHadiths.remove(hadithItem.id)
+                        } else {
+                            favoriteHadiths[hadithItem.id] = hadithItem
+                        }
+                    },
+                    onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
+                )
+                return@Box
+            }
+
             when (selectedTab) {
+                MainBottomTab.HOME -> {
+                    HomeDashboardScreen(
+                        favoritesCount = favoriteHadiths.size,
+                        onActionClick = { action ->
+                            when (action) {
+                                HomeQuickAction.HADITH -> {
+                                    selectedHadithTopic = HadithTopic.entries.firstOrNull { !it.isFavorites }
+                                }
+                                HomeQuickAction.AZKAR -> {
+                                    selectedTab = MainBottomTab.AZKAR
+                                    selectedAzkarCategory = null
+                                }
+                                HomeQuickAction.DUA -> {
+                                    selectedTab = MainBottomTab.DUA
+                                }
+                                HomeQuickAction.FAVORITES -> {
+                                    selectedHadithTopic = HadithTopic.entries.firstOrNull { it.isFavorites }
+                                }
+                                HomeQuickAction.TASBIH -> {
+                                    activeToolPage = QuickToolPage.TASBIH
+                                }
+                                HomeQuickAction.QIBLA -> {
+                                    activeToolPage = QuickToolPage.QIBLA
+                                }
+                                HomeQuickAction.PRAYER_GUIDE -> {
+                                    activeToolPage = QuickToolPage.PRAYER_GUIDE
+                                }
+                                HomeQuickAction.MORNING_FOCUS -> {
+                                    activeToolPage = QuickToolPage.MORNING_FOCUS
+                                }
+                            }
+                        }
+                    )
+                }
+
                 MainBottomTab.AZKAR -> {
                     val activeCat = selectedAzkarCategory
                     if (activeCat == null) {
@@ -564,38 +645,213 @@ fun AtharMuslimApp(
                     )
                 }
 
-                MainBottomTab.HADITH -> {
-                    val activeTopic = selectedHadithTopic
-                    if (activeTopic == null) {
-                        HadithTopicsVerticalList(
-                            favoritesCount = favoriteHadiths.size,
-                            onSelectTopic = { topic -> selectedHadithTopic = topic }
-                        )
-                    } else {
-                        HadithTopicDetailScreen(
-                            topic = activeTopic,
-                            isLoading = isLoadingHadith,
-                            loadResult = hadithLoadState,
-                            favoriteMap = favoriteHadiths,
-                            countsMap = countsMap,
-                            soundEnabled = soundEnabled,
-                            vibrationEnabled = vibrationEnabled,
-                            fontScaleStep = fontScaleStep,
-                            onRetry = { retryNonce++ },
-                            onToggleFavorite = { hadithItem ->
-                                if (favoriteHadiths.containsKey(hadithItem.id)) {
-                                    favoriteHadiths.remove(hadithItem.id)
-                                } else {
-                                    favoriteHadiths[hadithItem.id] = hadithItem
-                                }
-                            },
-                            onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
-                        )
-                    }
-                }
-
                 MainBottomTab.FOLLOW_US -> {
                     FollowUsCardScreen()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickToolScreen(
+    page: QuickToolPage,
+    soundEnabled: Boolean,
+    vibrationEnabled: Boolean,
+    onOpenMorningAzkar: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    var tasbihCount by remember { mutableIntStateOf(0) }
+    var targetGoal by remember { mutableIntStateOf(33) }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 22.dp)
+    ) {
+        when (page) {
+            QuickToolPage.TASBIH -> {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = scheme.surface),
+                        border = BorderStroke(1.2.dp, scheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Text(
+                                text = "سبحان الله وبحمده، سبحان الله العظيم",
+                                color = scheme.onSurface,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Surface(
+                                shape = CircleShape,
+                                color = scheme.primaryContainer,
+                                border = BorderStroke(2.dp, scheme.tertiary),
+                                modifier = Modifier.size(124.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = "$tasbihCount",
+                                            color = scheme.primary,
+                                            fontSize = 32.sp,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                        Text(
+                                            text = "الهدف: $targetGoal",
+                                            color = scheme.onPrimaryContainer,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(33, 100, 1000).forEach { goal ->
+                                    val selected = targetGoal == goal
+                                    Surface(
+                                        onClick = { targetGoal = goal },
+                                        shape = RoundedCornerShape(50),
+                                        color = if (selected) scheme.primary else scheme.primaryContainer
+                                    ) {
+                                        Text(
+                                            text = "$goal",
+                                            color = if (selected) scheme.onPrimary else scheme.onPrimaryContainer,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        tasbihCount++
+                                        val completed = tasbihCount % targetGoal == 0
+                                        SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = completed)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = scheme.primary),
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier.weight(2f).height(48.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Add, contentDescription = null, tint = scheme.onPrimary)
+                                    Text("تسبيح", color = scheme.onPrimary, fontWeight = FontWeight.ExtraBold)
+                                }
+
+                                Button(
+                                    onClick = { tasbihCount = 0 },
+                                    colors = ButtonDefaults.buttonColors(containerColor = scheme.primaryContainer),
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier.weight(1f).height(48.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = scheme.onPrimaryContainer)
+                                    Text("تصفير", color = scheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            QuickToolPage.QIBLA -> {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = scheme.surface),
+                        border = BorderStroke(1.2.dp, scheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.Explore, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(44.dp))
+                            Text("اتجاه القبلة نحو الكعبة المشرفة", color = scheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(
+                                text = "لأدق تحديد لاتجاه القبلة، يُنصح بتفعيل الموقع الجغرافي (GPS) والابتعاد عن المجالات المغناطيسية القوية.",
+                                color = scheme.onSurfaceVariant,
+                                fontSize = 13.sp,
+                                lineHeight = 21.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+
+            QuickToolPage.PRAYER_GUIDE -> {
+                val steps = listOf(
+                    "النية واستقبال القبلة" to "استحضار نية الصلاة في القلب والوقوف باتجاه القبلة بخشوع وطمأنينة.",
+                    "تكبيرة الإحرام والقيام" to "رفع اليدين حذو المنكبين أو الأذنين وقول (الله أكبر)، ثم قراءة الفاتحة وما تيسر من القرآن.",
+                    "الركوع والاعتدال" to "الانحناء مع تسوية الظهر وقول (سبحان ربي العظيم)، ثم الرفع وقول (سمع الله لمن حمده، ربنا ولك الحمد).",
+                    "السجود والتشهد والتسليم" to "السجود على الأعضاء السبعة وقول (سبحان ربي الأعلى)، ثم التشهد الأخير والصلاة الإبراهيمية والتسليم."
+                )
+                items(steps) { (title, desc) ->
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = scheme.surface),
+                        border = BorderStroke(1.2.dp, scheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Icon(Icons.Rounded.Mosque, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
+                                Text(title, color = scheme.onSurface, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                            }
+                            Text(desc, color = scheme.onSurfaceVariant, fontSize = 12.5.sp, lineHeight = 20.sp)
+                        }
+                    }
+                }
+            }
+
+            QuickToolPage.MORNING_FOCUS -> {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = scheme.surface),
+                        border = BorderStroke(1.2.dp, scheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text("ورد اليوم المختار", color = scheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(
+                                text = "ابدأ يومك بأذكار الصباح والسكينة، وتابع إتمام أعدادك اليومية خطوة بخطوة.",
+                                color = scheme.onSurfaceVariant,
+                                fontSize = 13.sp,
+                                lineHeight = 21.sp,
+                                textAlign = TextAlign.Center
+                            )
+                            Button(
+                                onClick = onOpenMorningAzkar,
+                                colors = ButtonDefaults.buttonColors(containerColor = scheme.primary),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("فتح أذكار الصباح", color = scheme.onPrimary, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -718,88 +974,6 @@ private fun AzkarCategoriesVerticalList(
                             modifier = Modifier.size(22.dp)
                         )
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HadithTopicsVerticalList(
-    favoritesCount: Int,
-    onSelectTopic: (HadithTopic) -> Unit
-) {
-    val scheme = MaterialTheme.colorScheme
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 18.dp)
-    ) {
-        items(HadithTopic.entries, key = { it.key }) { topic ->
-            Card(
-                onClick = { onSelectTopic(topic) },
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                border = BorderStroke(1.5.dp, scheme.outlineVariant),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = scheme.primaryContainer,
-                            border = BorderStroke(1.dp, scheme.outlineVariant),
-                            modifier = Modifier.size(44.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = topic.icon,
-                                    contentDescription = null,
-                                    tint = scheme.primary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                        }
-
-                        Column {
-                            Text(
-                                text = topic.title,
-                                color = scheme.onSurface,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = if (topic.isFavorites) {
-                                    "عدد الأحاديث المحفوظة: $favoritesCount"
-                                } else {
-                                    topic.subtitle
-                                },
-                                color = scheme.onSurfaceVariant,
-                                fontSize = 12.5.sp
-                            )
-                        }
-                    }
-
-                    Icon(
-                        imageVector = Icons.Rounded.ChevronLeft,
-                        contentDescription = null,
-                        tint = scheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
                 }
             }
         }
@@ -1011,6 +1185,7 @@ private fun ItemsCardsList(
 @Composable
 private fun FollowUsCardScreen() {
     val scheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1028,7 +1203,7 @@ private fun FollowUsCardScreen() {
             Column(
                 modifier = Modifier.padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = "أثر مسلم",
@@ -1037,24 +1212,30 @@ private fun FollowUsCardScreen() {
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
-                    text = "رفيقك اليومي للأذكار والأدعية والأحاديث بتصميم إسلامي هادئ ومريح للعين.",
+                    text = "رفيقك اليومي للأذكار والأدعية والأحاديث. شارك التطبيق مع من تحب ليكون لك أجر ونشر للخير.",
                     color = scheme.onBackground,
-                    fontSize = 15.sp,
-                    lineHeight = 25.sp,
+                    fontSize = 14.5.sp,
+                    lineHeight = 24.sp,
                     textAlign = TextAlign.Center
                 )
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = scheme.primaryContainer,
-                    border = BorderStroke(1.dp, scheme.outlineVariant)
+                Button(
+                    onClick = {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "تطبيق أثر مسلم — للأذكار والأدعية والأحاديث النبوية."
+                            )
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "مشاركة أثر مسلم"))
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = scheme.primary),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "نسخة أثر مسلم • 5 ثيمات وواجهة إعدادات مستقلة",
-                        color = scheme.onPrimaryContainer,
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                    )
+                    Icon(Icons.Rounded.Share, contentDescription = null, tint = scheme.onPrimary)
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text("مشاركة أثر مسلم", color = scheme.onPrimary, fontWeight = FontWeight.Bold)
                 }
             }
         }
