@@ -4,7 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.MenuBook
-import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class MainBottomTab(
@@ -23,8 +23,8 @@ enum class MainBottomTab(
         label = "الأدعية",
         icon = Icons.Rounded.AutoStories
     ),
-    FOLLOW_US(
-        label = "تابعنا",
-        icon = Icons.Rounded.Share
+    SETTINGS(
+        label = "الضبط",
+        icon = Icons.Rounded.Settings
     )
 }
