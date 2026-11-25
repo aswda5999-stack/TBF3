@@ -1,7 +1,6 @@
 package com.athar.muslim.ui.screens
 
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -31,7 +30,6 @@ import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.Collections
 import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Refresh
@@ -68,14 +66,14 @@ import com.athar.muslim.ui.components.IslamicArtworkBanner
 import com.athar.muslim.ui.components.getTenIslamicSlides
 import com.athar.muslim.ui.theme.AppThemePreset
 
-private enum class SettingsSubPage(val title: String, val subtitle: String) {
-    MENU("الضبط والإعدادات", "تخصيص المظهر، الصور، التنبيهات والمزيد"),
-    THEMES("الثيمات والمظهر", "اختر من بين 5 ثيمات متكاملة تشمل كامل التطبيق"),
-    GALLERY("معرض الصور الإسلامية", "تصفح الصور الـ 10 وضبط التقليب التلقائي"),
-    NOTIFICATIONS("الإشعارات والتنبيهات", "إدارة تذكيرات الأذكار اليومية"),
-    READING("القراءة والصوت والاهتزاز", "حجم الخط، صوت النقر، وتصفير العدادات"),
-    FOLLOW_US("تابعنا", "قنوات التواصل ومشاركة تطبيق أثر مسلم"),
-    ABOUT("عن التطبيق", "رسالة تطبيق أثر مسلم ومعلومات الإصدار")
+private enum class SettingsSectionPage(val title: String, val subtitle: String) {
+    ROOT("الضبط والإعدادات", "إعدادات منظمة وموسّعة لتطبيق أثر مسلم"),
+    THEMES("الثيمات", "اختر من بين 5 ثيمات متكاملة"),
+    GALLERY("معرض الصور الـ 10", "مراجعة اللوحات وضبط التقليب التلقائي"),
+    NOTIFICATIONS("الإشعارات", "تخصيص تنبيهات الأذكار اليومية"),
+    READING("القراءة والصوت والعدادات", "حجم الخط، الصوت، الاهتزاز، والتصفير"),
+    FOLLOW_US("تابعنا", "مشاركة التطبيق ونشر الأجر"),
+    ABOUT("عن التطبيق", "معلومات التطبيق والخصائص")
 }
 
 @Composable
@@ -99,13 +97,11 @@ fun SettingsScreen(
     val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
     val slides = remember { getTenIslamicSlides() }
-    var currentPage by remember { mutableStateOf(SettingsSubPage.MENU) }
+    var currentPage by remember { mutableStateOf(SettingsSectionPage.ROOT) }
 
-    // الرجوع خطوة بخطوة داخل شاشة الضبط:
-    // إذا كان المستخدم داخل صفحة فرعية (مثل الثيمات) يعود أولاً إلى قائمة الضبط الرئيسية
     BackHandler(enabled = true) {
-        if (currentPage != SettingsSubPage.MENU) {
-            currentPage = SettingsSubPage.MENU
+        if (currentPage != SettingsSectionPage.ROOT) {
+            currentPage = SettingsSectionPage.ROOT
         } else {
             onBack()
         }
@@ -116,7 +112,6 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(scheme.background)
     ) {
-        // رأس الصفحة الديناميكي حسب القسم المفتوح
         Surface(
             color = scheme.surface,
             shadowElevation = 3.dp,
@@ -126,14 +121,14 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 IconButton(
                     onClick = {
-                        if (currentPage != SettingsSubPage.MENU) {
-                            currentPage = SettingsSubPage.MENU
+                        if (currentPage != SettingsSectionPage.ROOT) {
+                            currentPage = SettingsSectionPage.ROOT
                         } else {
                             onBack()
                         }
@@ -150,226 +145,151 @@ fun SettingsScreen(
                     Text(
                         text = currentPage.title,
                         color = scheme.onSurface,
-                        fontSize = 18.sp,
+                        fontSize = 15.5.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
                     Text(
                         text = currentPage.subtitle,
                         color = scheme.onSurfaceVariant,
-                        fontSize = 12.sp
+                        fontSize = 11.sp
                     )
                 }
             }
         }
 
         when (currentPage) {
-            SettingsSubPage.MENU -> {
+            SettingsSectionPage.ROOT -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
-                    // شريط عرض الصور الإسلامية داخل الضبط كما طلبت
                     item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "معاينة الصور الإسلامية (10 لوحات)",
+                                    text = "الصور الإسلامية (10 لوحات)",
                                     color = scheme.onSurface,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.ExtraBold
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Surface(
-                                    onClick = { currentPage = SettingsSubPage.GALLERY },
+                                    onClick = { currentPage = SettingsSectionPage.GALLERY },
                                     shape = RoundedCornerShape(50),
                                     color = scheme.primaryContainer
                                 ) {
                                     Text(
-                                        text = "عرض الكل",
+                                        text = "المعرض الكامل",
                                         color = scheme.onPrimaryContainer,
-                                        fontSize = 11.5.sp,
+                                        fontSize = 10.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
                                     )
                                 }
                             }
 
                             LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 items(slides, key = { it.id }) { slide ->
                                     IslamicArtworkBanner(
                                         slide = slide,
                                         modifier = Modifier
-                                            .width(240.dp)
-                                            .height(104.dp)
+                                            .width(220.dp)
+                                            .height(92.dp)
                                     )
                                 }
                             }
                         }
                     }
 
-                    // عناصر الضبط كعناوين مستقلة تفتح كل واحدة شاشة خاصة
+                    item { SettingsGroupLabel("المظهر والعرض") }
                     item {
-                        SettingsMenuTile(
+                        CompactSettingRow(
                             title = "الثيمات",
-                            subtitle = "الثيم الحالي: ${selectedTheme.title} (5 ثيمات كاملة)",
+                            subtitle = "الثيم الحالي: ${selectedTheme.title}",
                             icon = Icons.Rounded.Palette,
-                            onClick = { currentPage = SettingsSubPage.THEMES }
+                            onClick = { currentPage = SettingsSectionPage.THEMES }
                         )
                     }
                     item {
-                        SettingsMenuTile(
-                            title = "صور الواجهة العلوية",
-                            subtitle = if (autoSlideEnabled) "التقليب التلقائي مفعل (كل 4 ثوانٍ)" else "التقليب التلقائي متوقف",
+                        CompactSettingRow(
+                            title = "الصور والتقليب التلقائي",
+                            subtitle = if (autoSlideEnabled) "يعمل تلقائياً كل 4 ثوانٍ" else "متوقف حالياً",
                             icon = Icons.Rounded.Collections,
-                            onClick = { currentPage = SettingsSubPage.GALLERY }
+                            onClick = { currentPage = SettingsSectionPage.GALLERY }
                         )
                     }
+
+                    item { SettingsGroupLabel("التنبيهات والقراءة") }
                     item {
-                        SettingsMenuTile(
+                        CompactSettingRow(
                             title = "الإشعارات والتذكيرات",
-                            subtitle = if (remindersEnabled) "إشعارات الصباح والمساء والنوم مفعلة" else "الإشعارات متوقفة",
+                            subtitle = if (remindersEnabled) "مفعلة للأذكار اليومية" else "متوقفة",
                             icon = Icons.Rounded.NotificationsActive,
-                            onClick = { currentPage = SettingsSubPage.NOTIFICATIONS }
+                            onClick = { currentPage = SettingsSectionPage.NOTIFICATIONS }
                         )
                     }
                     item {
-                        SettingsMenuTile(
+                        CompactSettingRow(
                             title = "القراءة والصوت والعدادات",
-                            subtitle = "حجم الخط، صوت النقر، الاهتزاز، وتصفير العدادات",
+                            subtitle = "حجم الخط، الصوت، الاهتزاز، وتصفير العدادات",
                             icon = Icons.Rounded.FormatSize,
-                            onClick = { currentPage = SettingsSubPage.READING }
+                            onClick = { currentPage = SettingsSectionPage.READING }
                         )
                     }
+
+                    item { SettingsGroupLabel("التواصل والمعلومات") }
                     item {
-                        SettingsMenuTile(
+                        CompactSettingRow(
                             title = "تابعنا",
-                            subtitle = "مشاركة التطبيق وقنوات التواصل والدعم",
+                            subtitle = "مشاركة التطبيق ونشر الأجر",
                             icon = Icons.Rounded.Share,
-                            onClick = { currentPage = SettingsSubPage.FOLLOW_US }
+                            onClick = { currentPage = SettingsSectionPage.FOLLOW_US }
                         )
                     }
                     item {
-                        SettingsMenuTile(
+                        CompactSettingRow(
                             title = "عن التطبيق",
-                            subtitle = "تعرف على رسالة تطبيق أثر مسلم ومميزاته",
+                            subtitle = "نبذة عن تطبيق أثر مسلم ومميزاته",
                             icon = Icons.Rounded.Info,
-                            onClick = { currentPage = SettingsSubPage.ABOUT }
+                            onClick = { currentPage = SettingsSectionPage.ABOUT }
                         )
                     }
                 }
             }
 
-            SettingsSubPage.THEMES -> {
+            SettingsSectionPage.THEMES -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
                     items(AppThemePreset.entries, key = { it.id }) { preset ->
                         val isSelected = preset == selectedTheme
                         Surface(
                             onClick = { onSelectTheme(preset) },
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(14.dp),
                             color = if (isSelected) scheme.primaryContainer else scheme.surface,
                             border = BorderStroke(
-                                width = if (isSelected) 2.dp else 1.2.dp,
+                                width = if (isSelected) 1.8.dp else 1.dp,
                                 color = if (isSelected) scheme.tertiary else scheme.outlineVariant
                             ),
-                            shadowElevation = 2.dp,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .background(
-                                                brush = Brush.linearGradient(
-                                                    colors = listOf(preset.swatchPrimary, preset.swatchSecondary)
-                                                ),
-                                                shape = RoundedCornerShape(14.dp)
-                                            )
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(14.dp)
-                                                .align(Alignment.TopEnd)
-                                                .padding(3.dp)
-                                                .background(preset.swatchAccent, CircleShape)
-                                        )
-                                    }
-
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = preset.title,
-                                            color = scheme.onSurface,
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.ExtraBold
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = preset.description,
-                                            color = scheme.onSurfaceVariant,
-                                            fontSize = 12.sp,
-                                            lineHeight = 17.sp
-                                        )
-                                    }
-                                }
-
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.CheckCircle,
-                                        contentDescription = "مختار",
-                                        tint = scheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            SettingsSubPage.GALLERY -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
-                ) {
-                    item {
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                            border = BorderStroke(1.2.dp, scheme.outlineVariant),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
+                                    .padding(11.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
@@ -378,22 +298,92 @@ fun SettingsScreen(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.AutoAwesomeMotion,
-                                        contentDescription = null,
-                                        tint = scheme.primary
-                                    )
-                                    Column {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .background(
+                                                brush = Brush.linearGradient(
+                                                    colors = listOf(preset.swatchPrimary, preset.swatchSecondary)
+                                                ),
+                                                shape = RoundedCornerShape(10.dp)
+                                            )
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(11.dp)
+                                                .align(Alignment.TopEnd)
+                                                .padding(2.dp)
+                                                .background(preset.swatchAccent, CircleShape)
+                                        )
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = "التقليب التلقائي كل 4 ثوانٍ",
+                                            text = preset.title,
                                             color = scheme.onSurface,
-                                            fontSize = 15.sp,
+                                            fontSize = 13.5.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                            text = "تبديل تلقائي مستمر بين اللوحات العشر في الشاشة الرئيسية",
+                                            text = preset.description,
                                             color = scheme.onSurfaceVariant,
-                                            fontSize = 12.sp
+                                            fontSize = 11.sp,
+                                            lineHeight = 15.sp
+                                        )
+                                    }
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.CheckCircle,
+                                        contentDescription = null,
+                                        tint = scheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            SettingsSectionPage.GALLERY -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
+                ) {
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = scheme.surface),
+                            border = BorderStroke(1.dp, scheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Rounded.AutoAwesomeMotion, contentDescription = null, tint = scheme.primary)
+                                    Column {
+                                        Text(
+                                            text = "التقليب التلقائي (كل 4 ثوانٍ)",
+                                            color = scheme.onSurface,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "الانتقال التلقائي المتواصل بين اللوحات الـ 10",
+                                            color = scheme.onSurfaceVariant,
+                                            fontSize = 11.sp
                                         )
                                     }
                                 }
@@ -414,87 +404,84 @@ fun SettingsScreen(
                             slide = slide,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(128.dp)
+                                .height(112.dp)
                         )
                     }
                 }
             }
 
-            SettingsSubPage.NOTIFICATIONS -> {
+            SettingsSectionPage.NOTIFICATIONS -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
                     item {
                         Card(
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(14.dp),
                             colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                            border = BorderStroke(1.2.dp, scheme.outlineVariant),
+                            border = BorderStroke(1.dp, scheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "تفعيل إشعارات الأذكار اليومية",
-                                            color = scheme.onSurface,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = "تذكير بأذكار الصباح والمساء والنوم في مواعيدها اليومية",
-                                            color = scheme.onSurfaceVariant,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                    Switch(
-                                        checked = remindersEnabled,
-                                        onCheckedChange = onToggleReminders,
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = scheme.onPrimary,
-                                            checkedTrackColor = scheme.primary
-                                        )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "إشعارات الأذكار اليومية",
+                                        color = scheme.onSurface,
+                                        fontSize = 13.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "تذكير يومي بالصباح والمساء والنوم",
+                                        color = scheme.onSurfaceVariant,
+                                        fontSize = 11.sp
                                     )
                                 }
+                                Switch(
+                                    checked = remindersEnabled,
+                                    onCheckedChange = onToggleReminders,
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = scheme.onPrimary,
+                                        checkedTrackColor = scheme.primary
+                                    )
+                                )
                             }
                         }
                     }
                 }
             }
 
-            SettingsSubPage.READING -> {
+            SettingsSectionPage.READING -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
                     item {
                         Card(
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(14.dp),
                             colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                            border = BorderStroke(1.2.dp, scheme.outlineVariant),
+                            border = BorderStroke(1.dp, scheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Text(
-                                    text = "حجم خط الأذكار والأدعية والأحاديث",
+                                    text = "حجم خط البطاقات",
                                     color = scheme.onSurface,
-                                    fontSize = 15.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Row(
@@ -506,7 +493,7 @@ fun SettingsScreen(
                                         val selected = fontScaleStep == step
                                         Surface(
                                             onClick = { onChangeFontScale(step) },
-                                            shape = RoundedCornerShape(12.dp),
+                                            shape = RoundedCornerShape(10.dp),
                                             color = if (selected) scheme.primary else scheme.primaryContainer,
                                             border = BorderStroke(
                                                 1.dp,
@@ -515,13 +502,13 @@ fun SettingsScreen(
                                             modifier = Modifier.weight(1f)
                                         ) {
                                             Box(
-                                                modifier = Modifier.padding(vertical = 10.dp),
+                                                modifier = Modifier.padding(vertical = 8.dp),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Text(
                                                     text = label,
                                                     color = if (selected) scheme.onPrimary else scheme.onPrimaryContainer,
-                                                    fontSize = 13.5.sp,
+                                                    fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             }
@@ -529,7 +516,7 @@ fun SettingsScreen(
                                     }
                                 }
 
-                                HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.6f))
+                                HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -540,8 +527,8 @@ fun SettingsScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Icon(Icons.Rounded.VolumeUp, contentDescription = null, tint = scheme.primary)
-                                        Text("صوت النقر والإتمام", color = scheme.onSurface, fontWeight = FontWeight.Bold)
+                                        Icon(Icons.Rounded.VolumeUp, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
+                                        Text("صوت النقر", color = scheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Switch(
                                         checked = soundEnabled,
@@ -562,8 +549,8 @@ fun SettingsScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Icon(Icons.Rounded.Vibration, contentDescription = null, tint = scheme.primary)
-                                        Text("الاهتزاز اللمسي", color = scheme.onSurface, fontWeight = FontWeight.Bold)
+                                        Icon(Icons.Rounded.Vibration, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(18.dp))
+                                        Text("الاهتزاز اللمسي", color = scheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Switch(
                                         checked = vibrationEnabled,
@@ -575,17 +562,17 @@ fun SettingsScreen(
                                     )
                                 }
 
-                                HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.6f))
+                                HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
 
                                 Button(
                                     onClick = onResetAllCounts,
                                     colors = ButtonDefaults.buttonColors(containerColor = scheme.primary),
-                                    shape = RoundedCornerShape(14.dp),
+                                    shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = scheme.onPrimary)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("تصفير جميع العدادات الآن", color = scheme.onPrimary, fontWeight = FontWeight.Bold)
+                                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = scheme.onPrimary, modifier = Modifier.size(17.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("تصفير جميع العدادات", color = scheme.onPrimary, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -593,43 +580,37 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsSubPage.FOLLOW_US -> {
+            SettingsSectionPage.FOLLOW_US -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
                     item {
                         Card(
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                            border = BorderStroke(1.2.dp, scheme.outlineVariant),
+                            border = BorderStroke(1.dp, scheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
-                                modifier = Modifier.padding(18.dp),
+                                modifier = Modifier.padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Language,
-                                    contentDescription = null,
-                                    tint = scheme.primary,
-                                    modifier = Modifier.size(40.dp)
-                                )
                                 Text(
-                                    text = "شارك الأجر مع من تحب",
+                                    text = "شارك تطبيق أثر مسلم",
                                     color = scheme.onSurface,
-                                    fontSize = 18.sp,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold
                                 )
                                 Text(
-                                    text = "الدال على الخير كفاعله — انشر تطبيق أثر مسلم ليكون صدقة جارية لك ولمن تحب.",
+                                    text = "انشر الخير وشارك الأذكار والأدعية مع أهلك وأحبابك.",
                                     color = scheme.onSurfaceVariant,
-                                    fontSize = 14.sp,
-                                    lineHeight = 22.sp,
+                                    fontSize = 12.5.sp,
+                                    lineHeight = 19.sp,
                                     textAlign = TextAlign.Center
                                 )
                                 Button(
@@ -638,18 +619,18 @@ fun SettingsScreen(
                                             type = "text/plain"
                                             putExtra(
                                                 Intent.EXTRA_TEXT,
-                                                "تطبيق أثر مسلم — للأذكار والأدعية والأحاديث النبوية بتصميم هادئ ومريح."
+                                                "تطبيق أثر مسلم — للأذكار والأدعية والأحاديث النبوية."
                                             )
                                         }
                                         context.startActivity(Intent.createChooser(shareIntent, "مشاركة أثر مسلم"))
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = scheme.primary),
-                                    shape = RoundedCornerShape(14.dp),
+                                    shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(Icons.Rounded.Share, contentDescription = null, tint = scheme.onPrimary)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("مشاركة تطبيق أثر مسلم", color = scheme.onPrimary, fontWeight = FontWeight.Bold)
+                                    Icon(Icons.Rounded.Share, contentDescription = null, tint = scheme.onPrimary, modifier = Modifier.size(17.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("مشاركة التطبيق", color = scheme.onPrimary, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -657,57 +638,39 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsSubPage.ABOUT -> {
+            SettingsSectionPage.ABOUT -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
                     item {
                         Card(
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                            border = BorderStroke(1.2.dp, scheme.outlineVariant),
+                            border = BorderStroke(1.dp, scheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
-                                modifier = Modifier.padding(18.dp),
+                                modifier = Modifier.padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Info,
-                                    contentDescription = null,
-                                    tint = scheme.primary,
-                                    modifier = Modifier.size(40.dp)
-                                )
                                 Text(
                                     text = "تطبيق أثر مسلم",
                                     color = scheme.onSurface,
-                                    fontSize = 20.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.ExtraBold
                                 )
                                 Text(
-                                    text = "رفيقك اليومي للمحافظة على أذكار الصباح والمساء والنوم والأدعية المأثورة والأحاديث النبوية، مع 5 ثيمات كاملة وتجربة قراءة هادئة بدون أي تعقيد.",
+                                    text = "تطبيق إسلامي متكامل للأذكار والأدعية والأحاديث مع 5 ثيمات كاملة وواجهة منظمة ومريحة للعين.",
                                     color = scheme.onSurfaceVariant,
-                                    fontSize = 14.sp,
-                                    lineHeight = 23.sp,
+                                    fontSize = 12.5.sp,
+                                    lineHeight = 20.sp,
                                     textAlign = TextAlign.Center
                                 )
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = scheme.primaryContainer
-                                ) {
-                                    Text(
-                                        text = "الإصدار الاحترافي • أثر مسلم",
-                                        color = scheme.onPrimaryContainer,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                                    )
-                                }
                             }
                         }
                     }
@@ -718,7 +681,19 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsMenuTile(
+private fun SettingsGroupLabel(label: String) {
+    val scheme = MaterialTheme.colorScheme
+    Text(
+        text = label,
+        color = scheme.primary,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+    )
+}
+
+@Composable
+private fun CompactSettingRow(
     title: String,
     subtitle: String,
     icon: ImageVector,
@@ -727,61 +702,56 @@ private fun SettingsMenuTile(
     val scheme = MaterialTheme.colorScheme
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = scheme.surface),
-        border = BorderStroke(1.2.dp, scheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, scheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 14.dp),
+                .padding(horizontal = 12.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f)
             ) {
                 Surface(
                     shape = CircleShape,
                     color = scheme.primaryContainer,
-                    border = BorderStroke(1.dp, scheme.outlineVariant),
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(34.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
                             tint = scheme.primary,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
-
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
                         color = scheme.onSurface,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.ExtraBold
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = subtitle,
                         color = scheme.onSurfaceVariant,
-                        fontSize = 12.sp
+                        fontSize = 10.5.sp
                     )
                 }
             }
-
             Icon(
                 imageVector = Icons.Rounded.ChevronLeft,
                 contentDescription = null,
                 tint = scheme.primary,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
     }
