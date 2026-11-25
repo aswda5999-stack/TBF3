@@ -58,16 +58,16 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 enum class IslamicArtType {
-    QURAN_BOOK,       // كتاب الله (المصحف الشريف على حامل)
-    MASJID_HARAM,     // المسجد الحرام والكعبة المشرفة
-    MASJID_NABAWI,    // المسجد النبوي والقبة الخضراء
-    DOME_OF_ROCK,     // قبة الصخرة
-    MIHRAB_LIGHT,     // محراب النور والقنديل
-    ANDALUS_ARCHES,   // أقواس الأندلس
-    CRESCENT_MINARET, // مئذنة وهلال
-    ISLAMIC_STAR,     // النجمة الثمانية والزخرفة الهندسية
-    TASBIH_PEARLS,    // سبحة الذكر
-    QURAN_ILLUMINATED // صفحة مصحف مزخرفة
+    QURAN_BOOK,
+    MASJID_HARAM,
+    MASJID_NABAWI,
+    DOME_OF_ROCK,
+    MIHRAB_LIGHT,
+    ANDALUS_ARCHES,
+    CRESCENT_MINARET,
+    ISLAMIC_STAR,
+    TASBIH_PEARLS,
+    QURAN_ILLUMINATED
 }
 
 data class IslamicBannerSlide(
@@ -124,7 +124,6 @@ fun SkyHeaderDecor(
                 .statusBarsPadding()
                 .padding(top = 6.dp, bottom = 10.dp)
         ) {
-            // الشريط العلوي: زر الإعدادات على اليمين + العنوان + الشارة
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -201,7 +200,6 @@ fun SkyHeaderDecor(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // لوحة عرض واحدة فقط في الشاشة تتغير بسلاسة كل 4 ثوانٍ
             Crossfade(
                 targetState = currentSlide,
                 animationSpec = tween(durationMillis = 600),
@@ -221,7 +219,6 @@ fun SkyHeaderDecor(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 10 نقاط احترافية تتمدد وتتلون مع الصورة النشطة
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -342,7 +339,6 @@ private fun DrawScope.drawIslamicScene(
     val w = size.width
     val h = size.height
 
-    // خلفية نجوم خفيفة وأقواس زينة في كل اللوحات
     drawCircle(
         color = lightColor.copy(alpha = 0.06f),
         radius = h * 0.75f,
@@ -360,7 +356,6 @@ private fun DrawScope.drawIslamicScene(
 
     when (artType) {
         IslamicArtType.QURAN_BOOK, IslamicArtType.QURAN_ILLUMINATED -> {
-            // رسم حامل المصحف (الرحل) والمصحف الشريف مفتوحاً مع زخرفة ذهبية
             val standPath = Path().apply {
                 moveTo(artCenterX - 34.dp.toPx(), baseY)
                 lineTo(artCenterX + 26.dp.toPx(), baseY - 26.dp.toPx())
@@ -373,29 +368,32 @@ private fun DrawScope.drawIslamicScene(
                 style = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round)
             )
 
-            // صفحتا المصحف المفتوحتان
             val leftPage = Path().apply {
                 moveTo(artCenterX, baseY - 22.dp.toPx())
-                quadraticTo(
-                    artCenterX - 24.dp.toPx(), baseY - 34.dp.toPx(),
+                cubicTo(
+                    artCenterX - 16.dp.toPx(), baseY - 30.dp.toPx(),
+                    artCenterX - 32.dp.toPx(), baseY - 30.dp.toPx(),
                     artCenterX - 46.dp.toPx(), baseY - 24.dp.toPx()
                 )
                 lineTo(artCenterX - 42.dp.toPx(), baseY - 58.dp.toPx())
-                quadraticTo(
-                    artCenterX - 20.dp.toPx(), baseY - 66.dp.toPx(),
+                cubicTo(
+                    artCenterX - 28.dp.toPx(), baseY - 64.dp.toPx(),
+                    artCenterX - 14.dp.toPx(), baseY - 62.dp.toPx(),
                     artCenterX, baseY - 54.dp.toPx()
                 )
                 close()
             }
             val rightPage = Path().apply {
                 moveTo(artCenterX, baseY - 22.dp.toPx())
-                quadraticTo(
-                    artCenterX + 24.dp.toPx(), baseY - 34.dp.toPx(),
+                cubicTo(
+                    artCenterX + 16.dp.toPx(), baseY - 30.dp.toPx(),
+                    artCenterX + 32.dp.toPx(), baseY - 30.dp.toPx(),
                     artCenterX + 46.dp.toPx(), baseY - 24.dp.toPx()
                 )
                 lineTo(artCenterX + 42.dp.toPx(), baseY - 58.dp.toPx())
-                quadraticTo(
-                    artCenterX + 20.dp.toPx(), baseY - 66.dp.toPx(),
+                cubicTo(
+                    artCenterX + 28.dp.toPx(), baseY - 64.dp.toPx(),
+                    artCenterX + 14.dp.toPx(), baseY - 62.dp.toPx(),
                     artCenterX, baseY - 54.dp.toPx()
                 )
                 close()
@@ -405,7 +403,6 @@ private fun DrawScope.drawIslamicScene(
             drawPath(leftPage, color = goldColor, style = Stroke(width = 1.6.dp.toPx()))
             drawPath(rightPage, color = goldColor, style = Stroke(width = 1.6.dp.toPx()))
 
-            // سطور مزخرفة داخل الصفحتين وهالة نور
             for (i in 1..3) {
                 val offsetY = (i * 8).dp.toPx()
                 drawLine(
@@ -427,7 +424,6 @@ private fun DrawScope.drawIslamicScene(
         }
 
         IslamicArtType.MASJID_HARAM -> {
-            // الكعبة المشرفة بحزامها الذهبي وأقواس الحرم
             val kWidth = 44.dp.toPx()
             val kHeight = 50.dp.toPx()
             val kLeft = artCenterX - kWidth / 2f
@@ -448,32 +444,32 @@ private fun DrawScope.drawIslamicScene(
                 topLeft = Offset(kLeft + 8.dp.toPx(), kTop + 24.dp.toPx()),
                 size = Size(9.dp.toPx(), 15.dp.toPx())
             )
-            // مئذنتان جانبيتان
             drawMinaret(artCenterX - 36.dp.toPx(), baseY, 68.dp.toPx(), goldColor, lightColor)
             drawMinaret(artCenterX + 36.dp.toPx(), baseY, 68.dp.toPx(), goldColor, lightColor)
         }
 
         IslamicArtType.MASJID_NABAWI, IslamicArtType.DOME_OF_ROCK -> {
-            // قبة كبيرة ومئذنتان رشيقتان
             drawDome(artCenterX, baseY, 54.dp.toPx(), 48.dp.toPx(), goldColor, lightColor)
             drawMinaret(artCenterX - 38.dp.toPx(), baseY, 72.dp.toPx(), goldColor, lightColor)
             drawMinaret(artCenterX + 38.dp.toPx(), baseY, 72.dp.toPx(), goldColor, lightColor)
         }
 
         IslamicArtType.MIHRAB_LIGHT, IslamicArtType.ANDALUS_ARCHES -> {
-            // محراب وقنديل معلق
             val archW = 54.dp.toPx()
             val archH = 68.dp.toPx()
             val archPath = Path().apply {
                 moveTo(artCenterX - archW / 2f, baseY)
                 lineTo(artCenterX - archW / 2f, baseY - archH * 0.55f)
-                quadraticTo(artCenterX, baseY - archH * 1.15f, artCenterX + archW / 2f, baseY - archH * 0.55f)
+                cubicTo(
+                    artCenterX - archW / 2f, baseY - archH * 1.05f,
+                    artCenterX + archW / 2f, baseY - archH * 1.05f,
+                    artCenterX + archW / 2f, baseY - archH * 0.55f
+                )
                 lineTo(artCenterX + archW / 2f, baseY)
                 close()
             }
             drawPath(archPath, color = lightColor.copy(alpha = 0.16f))
             drawPath(archPath, color = goldColor, style = Stroke(width = 2.2.dp.toPx()))
-            // قنديل نور وسط المحراب
             drawLine(
                 color = goldColor,
                 start = Offset(artCenterX, baseY - archH * 0.82f),
@@ -493,7 +489,6 @@ private fun DrawScope.drawIslamicScene(
         }
 
         IslamicArtType.TASBIH_PEARLS -> {
-            // حبات سبحة دائرية متصلة
             val radius = 28.dp.toPx()
             val center = Offset(artCenterX, h * 0.50f)
             drawCircle(
