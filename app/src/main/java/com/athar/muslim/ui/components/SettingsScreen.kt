@@ -42,10 +42,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -83,21 +81,16 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
-    var activeSection by rememberSaveable { mutableStateOf(SettingsSection.MAIN) }
+    val sectionState = remember { mutableStateOf(SettingsSection.MAIN) }
+    val activeSection = sectionState.value
 
-    val handleBack: () -> Unit = {
-        if (onBackToHome !== onBack) {
+    BackHandler(enabled = true) {
+        if (sectionState.value != SettingsSection.MAIN) {
+            sectionState.value = SettingsSection.MAIN
+        } else if (onBackToHome !== onBack) {
             onBackToHome()
         } else {
             onBack()
-        }
-    }
-
-    BackHandler(enabled = true) {
-        if (activeSection != SettingsSection.MAIN) {
-            activeSection = SettingsSection.MAIN
-        } else {
-            handleBack()
         }
     }
 
@@ -122,7 +115,7 @@ fun SettingsScreen(
                     IconButton(
                         onClick = {
                             SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                            activeSection = SettingsSection.MAIN
+                            sectionState.value = SettingsSection.MAIN
                         }
                     ) {
                         Icon(
@@ -165,7 +158,7 @@ fun SettingsScreen(
                             icon = Icons.Rounded.Palette,
                             onClick = {
                                 SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                activeSection = SettingsSection.THEMES
+                                sectionState.value = SettingsSection.THEMES
                             }
                         )
                     }
@@ -178,7 +171,7 @@ fun SettingsScreen(
                             icon = Icons.Rounded.NotificationsActive,
                             onClick = {
                                 SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                activeSection = SettingsSection.NOTIFICATIONS
+                                sectionState.value = SettingsSection.NOTIFICATIONS
                             }
                         )
                     }
@@ -189,7 +182,7 @@ fun SettingsScreen(
                             icon = Icons.Rounded.FormatSize,
                             onClick = {
                                 SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                activeSection = SettingsSection.READING
+                                sectionState.value = SettingsSection.READING
                             }
                         )
                     }
@@ -202,7 +195,7 @@ fun SettingsScreen(
                             icon = Icons.Rounded.Info,
                             onClick = {
                                 SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                activeSection = SettingsSection.ABOUT
+                                sectionState.value = SettingsSection.ABOUT
                             }
                         )
                     }
