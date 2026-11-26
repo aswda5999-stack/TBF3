@@ -30,13 +30,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronLeft
-import androidx.compose.material.icons.rounded.Construction
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -56,16 +54,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.athar.muslim.audio.VoiceAzkarPlayer
 import com.athar.muslim.data.AzkarRepository
-import com.athar.muslim.data.HadithRepository
 import com.athar.muslim.model.AzkarSubCategory
-import com.athar.muslim.model.HadithLoadResult
-import com.athar.muslim.model.HadithTopic
 import com.athar.muslim.model.MainBottomTab
 import com.athar.muslim.model.VoiceReminderIntensity
 import com.athar.muslim.model.ZikrItem
@@ -76,8 +70,6 @@ import com.athar.muslim.ui.components.SkyHeaderDecor
 import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.components.ZikrCard
 import com.athar.muslim.ui.screens.HomeDashboardScreen
-import com.athar.muslim.ui.screens.QuickToolPage
-import com.athar.muslim.ui.screens.QuickToolScreen
 import com.athar.muslim.ui.screens.SettingsScreen
 import com.athar.muslim.ui.screens.buttons.HomeQuickAction
 import com.athar.muslim.ui.theme.AppThemePreset
@@ -95,6 +87,201 @@ private enum class PermissionPromptStep {
 private fun todayKey(): String {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     return formatter.format(Date())
+}
+
+private fun buildItemsForHomeAction(action: HomeQuickAction): List<ZikrItem> {
+    return when (action) {
+        HomeQuickAction.QURAN -> listOf(
+            ZikrItem(
+                id = 9101,
+                title = "فهرس القرآن الكريم • السور المكية والمدنية",
+                text = "114 سورة مرتبة من الفاتحة إلى الناس لتلاوة منتظمة وتدبر يومي متواصل.",
+                count = 1,
+                benefit = "تخصيص ورد يومي ثابت من القرآن الكريم يثبّت القلب وينير الوقت.",
+                category = "القرآن الكريم"
+            ),
+            ZikrItem(
+                id = 9102,
+                title = "سور التلاوة والسكينة اليومية",
+                text = "سورة البقرة، سورة الكهف، سورة يس، سورة الملك، والمعوذات والإخلاص.",
+                count = 3,
+                benefit = "المداومة على قراءة السور المباركة في أوقاتها المفضلة.",
+                category = "القرآن الكريم"
+            ),
+            ZikrItem(
+                id = 9103,
+                title = "التدبر والمراجعة وحفظ الورد",
+                text = "اقرأ بتأنٍ ووضوح، وتابع آياتك المفضلة ومعانيها الميسّرة خطوة بخطوة.",
+                count = 1,
+                benefit = "الفهم والعمل بالقرآن هما الغاية الكبرى للتلاوة.",
+                category = "القرآن الكريم"
+            )
+        )
+
+        HomeQuickAction.AUDIO -> listOf(
+            ZikrItem(
+                id = 9201,
+                title = "الصوتيات والتذكير الصوتي الذكي",
+                text = "يلتقط التطبيق تلقائياً ملفات الصوت في مجلد الموارد الصوتية ويشغّلها حسب الشدة المختارة.",
+                count = 1,
+                benefit = "يمكن التحكم بالتفعيل والشدة (منخفض، متوسط، مرتفع) من شاشة الضبط.",
+                category = "الصوتيات"
+            ),
+            ZikrItem(
+                id = 9202,
+                title = "الاستمرار أثناء إطفاء الشاشة",
+                text = "يعمل التذكير الصوتي بانتظام حتى عند إغلاق الشاشة لتبقى على صلة بالذكر في كل وقت.",
+                count = 1,
+                benefit = "مناسب أثناء التنقل والراحة والعمل اليومي.",
+                category = "الصوتيات"
+            )
+        )
+
+        HomeQuickAction.PRAYER -> listOf(
+            ZikrItem(
+                id = 9301,
+                title = "الاستعداد واستقبال القبلة والخشوع",
+                text = "إسباغ الوضوء، واستحضار النية، والتوجه نحو القبلة بسكينة ووقار.",
+                count = 1,
+                benefit = "الاستعداد الهادئ يهيّئ القلب لحضور الصلاة.",
+                category = "الصلاة"
+            ),
+            ZikrItem(
+                id = 9302,
+                title = "أركان الصلاة والطمأنينة",
+                text = "تكبيرة الإحرام، وقراءة الفاتحة، والركوع والاعتدال، والسجود، والتشهد مع الطمأنينة في كل ركن.",
+                count = 5,
+                benefit = "الطمأنينة ركن أساسي لصحة الصلاة وكمالها.",
+                category = "الصلاة"
+            ),
+            ZikrItem(
+                id = 9303,
+                title = "أذكار ما بعد السلام",
+                text = "الاستغفار ثلاثاً، والتسبيح والتحميد والتكبير عقب الصلوات المكتوبة.",
+                count = 33,
+                benefit = "ختم الصلاة بالأذكار المشروعة يكمّل أجرها.",
+                category = "الصلاة"
+            )
+        )
+
+        HomeQuickAction.FOLLOW_US -> listOf(
+            ZikrItem(
+                id = 9401,
+                title = "مشاركة تطبيق أثر مسلم Pro",
+                text = "شارك التطبيق مع أهلك وأصدقائك ليكون لهم عوناً على الأذكار والأدعية والقرآن والأحاديث.",
+                count = 1,
+                benefit = "الدلالة على الخير من أعظم أبواب الأجر المتجدد.",
+                category = "تابعنا"
+            ),
+            ZikrItem(
+                id = 9402,
+                title = "متابعة التحديثات والتحسينات",
+                text = "تابع الإصدارات الجديدة لتطبيق أثر مسلم Pro للاستفادة من المزايا والتحسينات المستمرة.",
+                count = 1,
+                benefit = "تحديثات دورية تركز على السرعة والاستقرار وسهولة الاستخدام.",
+                category = "تابعنا"
+            )
+        )
+
+        HomeQuickAction.HADITH -> listOf(
+            ZikrItem(
+                id = 9501,
+                title = "1. صحيح البخاري",
+                text = "الأحاديث الصحيحة المختارة في الإيمان والعمل والآداب والأخلاق.",
+                count = 1,
+                benefit = "من أصح كتب السنة النبوية وأعظمها مكانة.",
+                category = "الأحاديث"
+            ),
+            ZikrItem(
+                id = 9502,
+                title = "2. صحيح مسلم",
+                text = "مختارات دقيقة من صحيح مسلم في التزكية والعبادات والمعاملات.",
+                count = 1,
+                benefit = "تميز بحسن الترتيب والجمع بين طرق الرواية.",
+                category = "الأحاديث"
+            ),
+            ZikrItem(
+                id = 9503,
+                title = "3. سنن أبي داود",
+                text = "أحاديث الأحكام والسنن اليومية في الطهارة والصلاة والآداب.",
+                count = 1,
+                benefit = "مرجع مهم في سنن العبادات والحياة اليومية.",
+                category = "الأحاديث"
+            ),
+            ZikrItem(
+                id = 9504,
+                title = "4. جامع الترمذي",
+                text = "أحاديث الشمائل والرقائق والآداب والفضائل والسنن.",
+                count = 1,
+                benefit = "يجمع بين الفوائد الحديثية والفقهية والتربوية.",
+                category = "الأحاديث"
+            ),
+            ZikrItem(
+                id = 9505,
+                title = "5. سنن النسائي",
+                text = "مختارات مركزة في السنن والآداب والأذكار والعبادات.",
+                count = 1,
+                benefit = "يُعنى بدقة التبويب والاختيار.",
+                category = "الأحاديث"
+            ),
+            ZikrItem(
+                id = 9506,
+                title = "6. سنن ابن ماجه",
+                text = "مختارات من سنن ابن ماجه في الدعوة والزهد والآداب والسنن.",
+                count = 1,
+                benefit = "يكمّل منظومة الكتب الستة المشهورة.",
+                category = "الأحاديث"
+            )
+        )
+
+        HomeQuickAction.TASBIH -> listOf(
+            ZikrItem(
+                id = 9601,
+                title = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+                text = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+                count = 100,
+                benefit = "من قالها مائة مرة في اليوم غفرت خطاياه وإن كانت مثل زبد البحر.",
+                category = "المسبحة"
+            ),
+            ZikrItem(
+                id = 9602,
+                title = "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ",
+                text = "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ",
+                count = 100,
+                benefit = "الاستغفار يفتح أبواب الطمأنينة والفرج والبركة.",
+                category = "المسبحة"
+            ),
+            ZikrItem(
+                id = 9603,
+                title = "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ",
+                text = "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+                count = 33,
+                benefit = "ذكر التوحيد العظيم وحفظ النفس وطمأنينة القلب.",
+                category = "المسبحة"
+            )
+        )
+
+        HomeQuickAction.QIBLA -> listOf(
+            ZikrItem(
+                id = 9701,
+                title = "تفعيل الموقع الجغرافي (GPS)",
+                text = "تأكد من تفعيل خدمة الموقع ومنح إذن الموقع الدقيق للحصول على اتجاه قبلة صحيح.",
+                count = 1,
+                benefit = "تحديد الموقع بدقة أساس حساب زاوية القبلة من أي مكان.",
+                category = "البوصلة"
+            ),
+            ZikrItem(
+                id = 9702,
+                title = "معايرة الهاتف وتجنب المغناطيس",
+                text = "حرّك الهاتف حركة هادئة على شكل رقم ثمانية وابتعد عن المجالات المغناطيسية أو الأغطية المعدنية.",
+                count = 1,
+                benefit = "يمنح مستشعر الاتجاه قراءة أكثر استقراراً ودقة.",
+                category = "البوصلة"
+            )
+        )
+
+        HomeQuickAction.AZKAR, HomeQuickAction.DUA -> emptyList()
+    }
 }
 
 class MainActivity : ComponentActivity() {
@@ -154,21 +341,15 @@ fun AtharMuslimApp(
     val fontScaleStepState = remember { mutableIntStateOf(prefs.getInt("font_scale_step", 1)) }
 
     val selectedTabState = remember { mutableStateOf(MainBottomTab.HOME) }
-    val activeToolPageState = remember { mutableStateOf<QuickToolPage?>(null) }
+    val activeHomeActionState = remember { mutableStateOf<HomeQuickAction?>(null) }
     val selectedAzkarCategoryState = remember { mutableStateOf<AzkarSubCategory?>(null) }
-    val hadithCategoriesOpenState = remember { mutableStateOf(false) }
-    val selectedHadithTopicState = remember { mutableStateOf<HadithTopic?>(null) }
-    val hadithLoadState = remember { mutableStateOf<HadithLoadResult?>(null) }
-    val isLoadingHadithState = remember { mutableStateOf(false) }
-    val retryNonceState = remember { mutableIntStateOf(0) }
     val showExitDialogState = remember { mutableStateOf(false) }
     val permissionStepState = remember { mutableStateOf(PermissionPromptStep.NONE) }
-    val favoriteQuranIdsState = remember { mutableStateOf(emptySet<Int>()) }
 
     val lastReadingTitleState = remember {
         mutableStateOf(
-            prefs.getString("last_reading_title", "القرآن الكريم • فهرس السور الكامل")
-                ?: "القرآن الكريم • فهرس السور الكامل"
+            prefs.getString("last_reading_title", "القرآن الكريم • فهرس السور")
+                ?: "القرآن الكريم • فهرس السور"
         )
     }
     val lastReadingActionIdState = remember {
@@ -185,44 +366,44 @@ fun AtharMuslimApp(
     val voiceIntensity = voiceIntensityState.value
     val fontScaleStep = fontScaleStepState.intValue
     val selectedTab = selectedTabState.value
-    val activeToolPage = activeToolPageState.value
+    val activeHomeAction = activeHomeActionState.value
     val selectedAzkarCategory = selectedAzkarCategoryState.value
-    val isHadithCategoriesOpen = hadithCategoriesOpenState.value
-    val selectedHadithTopic = selectedHadithTopicState.value
-    val favoriteQuranIds = favoriteQuranIdsState.value
     val lastReadingTitle = lastReadingTitleState.value
     val lastReadingAction = HomeQuickAction.entries.firstOrNull { it.id == lastReadingActionIdState.value }
         ?: HomeQuickAction.QURAN
 
-    fun recordLastReading(title: String, actionId: String) {
+    fun recordLastReading(title: String, action: HomeQuickAction) {
         lastReadingTitleState.value = title
-        lastReadingActionIdState.value = actionId
+        lastReadingActionIdState.value = action.id
         runCatching {
             prefs.edit()
                 .putString("last_reading_title", title)
-                .putString("last_reading_action_id", actionId)
+                .putString("last_reading_action_id", action.id)
                 .apply()
         }
     }
 
     val discoveredVoicesCount = remember {
-        VoiceAzkarPlayer.discoverRawVoiceResIds(context).size
+        runCatching { VoiceAzkarPlayer.discoverRawVoiceResIds(context).size }.getOrDefault(0)
     }
 
-    val favoriteHadiths = remember { mutableStateMapOf<Int, ZikrItem>() }
     val subCategories = AzkarSubCategory.entries
-
     val currentAzkarList = remember(selectedAzkarCategory) {
         selectedAzkarCategory?.let { AzkarRepository.getAzkarByCategory(context, it.key) }.orEmpty()
     }
     val duasList = remember { AzkarRepository.getDuas(context) }
+    val activeActionCards = remember(activeHomeAction) {
+        activeHomeAction?.let { buildItemsForHomeAction(it) }.orEmpty()
+    }
     val countsMap = remember { mutableStateMapOf<Int, Int>() }
 
     fun saveCountForItem(itemId: Int, value: Int) {
-        prefs.edit()
-            .putString("counts_day_key", todayKey())
-            .putInt("zikr_count_$itemId", value)
-            .apply()
+        runCatching {
+            prefs.edit()
+                .putString("counts_day_key", todayKey())
+                .putInt("zikr_count_$itemId", value)
+                .apply()
+        }
     }
 
     fun resetAllCountsToDefault() {
@@ -262,7 +443,7 @@ fun AtharMuslimApp(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         prefs.edit().putBoolean("exact_alarm_prompted", true).apply()
-        AzkarReminderReceiver.scheduleAllDailyReminders(context)
+        runCatching { AzkarReminderReceiver.scheduleAllDailyReminders(context) }
         permissionStepState.value = PermissionPromptStep.NONE
     }
 
@@ -270,9 +451,11 @@ fun AtharMuslimApp(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
         prefs.edit().putBoolean("runtime_perms_prompted", true).apply()
-        AzkarReminderReceiver.ensureNotificationChannel(context)
-        AzkarReminderReceiver.scheduleAllDailyReminders(context)
-        if (!AzkarReminderReceiver.canScheduleExactAlarms(context) &&
+        runCatching {
+            AzkarReminderReceiver.ensureNotificationChannel(context)
+            AzkarReminderReceiver.scheduleAllDailyReminders(context)
+        }
+        if (!runCatching { AzkarReminderReceiver.canScheduleExactAlarms(context) }.getOrDefault(true) &&
             !prefs.getBoolean("exact_alarm_prompted", false)
         ) {
             permissionStepState.value = PermissionPromptStep.EXACT_ALARM
@@ -286,20 +469,18 @@ fun AtharMuslimApp(
     }
 
     BackHandler(enabled = true) {
-        SoundHelper.playSystemTouchSound(context, soundEnabled, view, vibrationEnabled)
+        runCatching {
+            SoundHelper.playSystemTouchSound(context, soundEnabled, view, vibrationEnabled)
+        }
         when {
             showExitDialogState.value -> showExitDialogState.value = false
-            activeToolPage != null -> activeToolPageState.value = null
-            selectedHadithTopic != null -> selectedHadithTopicState.value = null
-            isHadithCategoriesOpen -> hadithCategoriesOpenState.value = false
+            activeHomeAction != null -> activeHomeActionState.value = null
             selectedTab == MainBottomTab.AZKAR && selectedAzkarCategory != null -> {
                 selectedAzkarCategoryState.value = null
             }
             selectedTab != MainBottomTab.HOME -> {
                 selectedAzkarCategoryState.value = null
-                selectedHadithTopicState.value = null
-                hadithCategoriesOpenState.value = false
-                activeToolPageState.value = null
+                activeHomeActionState.value = null
                 selectedTabState.value = MainBottomTab.HOME
             }
             else -> showExitDialogState.value = true
@@ -307,35 +488,19 @@ fun AtharMuslimApp(
     }
 
     LaunchedEffect(Unit) {
-        syncDailyCounts()
-        AzkarReminderReceiver.scheduleAllDailyReminders(context)
+        runCatching {
+            syncDailyCounts()
+            AzkarReminderReceiver.scheduleAllDailyReminders(context)
+        }
 
-        if (!AppPermissionsManager.hasAllRequiredRuntimePermissions(context) &&
+        if (!runCatching { AppPermissionsManager.hasAllRequiredRuntimePermissions(context) }.getOrDefault(true) &&
             !prefs.getBoolean("runtime_perms_prompted", false)
         ) {
             permissionStepState.value = PermissionPromptStep.RUNTIME_BUNDLE
-        } else if (!AzkarReminderReceiver.canScheduleExactAlarms(context) &&
+        } else if (!runCatching { AzkarReminderReceiver.canScheduleExactAlarms(context) }.getOrDefault(true) &&
             !prefs.getBoolean("exact_alarm_prompted", false)
         ) {
             permissionStepState.value = PermissionPromptStep.EXACT_ALARM
-        }
-    }
-
-    LaunchedEffect(selectedHadithTopic, retryNonceState.intValue) {
-        val topic = selectedHadithTopic
-        if (topic != null && !topic.isFavorites) {
-            isLoadingHadithState.value = true
-            hadithLoadState.value = null
-            val res = HadithRepository.loadTopicHadiths(topic)
-            if (res is HadithLoadResult.Success) {
-                res.items.forEach { entry ->
-                    if (!countsMap.containsKey(entry.id)) {
-                        countsMap[entry.id] = entry.count
-                    }
-                }
-            }
-            hadithLoadState.value = res
-            isLoadingHadithState.value = false
         }
     }
 
@@ -363,7 +528,9 @@ fun AtharMuslimApp(
             confirmButton = {
                 Button(
                     onClick = {
-                        SoundHelper.playSystemTouchSound(context, soundEnabled, view, vibrationEnabled)
+                        runCatching {
+                            SoundHelper.playSystemTouchSound(context, soundEnabled, view, vibrationEnabled)
+                        }
                         showExitDialogState.value = false
                         activity?.finishAffinity()
                     },
@@ -459,7 +626,7 @@ fun AtharMuslimApp(
                         if (settingsIntent != null) {
                             exactAlarmLauncher.launch(settingsIntent)
                         } else {
-                            AzkarReminderReceiver.scheduleAllDailyReminders(context)
+                            runCatching { AzkarReminderReceiver.scheduleAllDailyReminders(context) }
                             permissionStepState.value = PermissionPromptStep.NONE
                         }
                     },
@@ -481,14 +648,9 @@ fun AtharMuslimApp(
         )
     }
 
-    val isHomeDashboard = selectedTab == MainBottomTab.HOME &&
-        activeToolPage == null &&
-        selectedHadithTopic == null &&
-        !isHadithCategoriesOpen
+    val isHomeDashboard = selectedTab == MainBottomTab.HOME && activeHomeAction == null
 
-    val subtitleBadgeText = activeToolPage?.title
-        ?: selectedHadithTopic?.title
-        ?: if (isHadithCategoriesOpen) "فئات الأحاديث (6 فئات)" else null
+    val subtitleBadgeText = activeHomeAction?.title
         ?: when (selectedTab) {
             MainBottomTab.HOME -> "الرئيسية"
             MainBottomTab.AZKAR -> {
@@ -524,9 +686,7 @@ fun AtharMuslimApp(
                 soundEnabled = soundEnabled,
                 onTabSelected = { tab ->
                     selectedTabState.value = tab
-                    activeToolPageState.value = null
-                    selectedHadithTopicState.value = null
-                    hadithCategoriesOpenState.value = false
+                    activeHomeActionState.value = null
                     if (tab != MainBottomTab.AZKAR) {
                         selectedAzkarCategoryState.value = null
                     }
@@ -541,61 +701,15 @@ fun AtharMuslimApp(
                 .background(scheme.background)
                 .padding(innerPadding)
         ) {
-            if (activeToolPage != null) {
-                QuickToolScreen(
-                    page = activeToolPage,
-                    soundEnabled = soundEnabled,
-                    hapticEnabled = vibrationEnabled,
-                    favoriteQuranIds = favoriteQuranIds,
-                    onToggleFavoriteQuranAyah = { ayahId ->
-                        val nextSet = favoriteQuranIds.toMutableSet()
-                        if (!nextSet.add(ayahId)) {
-                            nextSet.remove(ayahId)
-                        }
-                        favoriteQuranIdsState.value = nextSet
-                    },
-                    onOpenMorningAzkar = {
-                        recordLastReading("أذكار الصباح", HomeQuickAction.AZKAR.id)
-                        activeToolPageState.value = null
-                        selectedTabState.value = MainBottomTab.AZKAR
-                        selectedAzkarCategoryState.value = AzkarSubCategory.MORNING
-                    }
-                )
-                return@Box
-            }
-
-            if (selectedHadithTopic != null) {
-                HadithTopicDetailScreen(
-                    topic = selectedHadithTopic,
-                    isLoading = isLoadingHadithState.value,
-                    loadResult = hadithLoadState.value,
-                    favoriteMap = favoriteHadiths,
+            if (activeHomeAction != null) {
+                ItemsCardsList(
+                    items = activeActionCards,
                     countsMap = countsMap,
+                    isZikrMode = activeHomeAction == HomeQuickAction.TASBIH,
                     soundEnabled = soundEnabled,
                     vibrationEnabled = vibrationEnabled,
                     fontScaleStep = fontScaleStep,
-                    onRetry = { retryNonceState.intValue++ },
-                    onToggleFavorite = { hadithItem ->
-                        if (favoriteHadiths.containsKey(hadithItem.id)) {
-                            favoriteHadiths.remove(hadithItem.id)
-                        } else {
-                            favoriteHadiths[hadithItem.id] = hadithItem
-                        }
-                    },
                     onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
-                )
-                return@Box
-            }
-
-            if (isHadithCategoriesOpen) {
-                HadithSixCategoriesVerticalList(
-                    categories = HadithTopic.sixMainCategories,
-                    soundEnabled = soundEnabled,
-                    hapticEnabled = vibrationEnabled,
-                    onSelectTopic = { topic ->
-                        recordLastReading(topic.title, HomeQuickAction.HADITH.id)
-                        selectedHadithTopicState.value = topic
-                    }
                 )
                 return@Box
             }
@@ -603,7 +717,7 @@ fun AtharMuslimApp(
             when (selectedTab) {
                 MainBottomTab.HOME -> {
                     HomeDashboardScreen(
-                        favoritesCount = favoriteHadiths.size + favoriteQuranIds.size,
+                        favoritesCount = 0,
                         lastReadingTitle = lastReadingTitle,
                         lastReadingAction = lastReadingAction,
                         soundEnabled = soundEnabled,
@@ -611,19 +725,17 @@ fun AtharMuslimApp(
                         onActionClick = { action ->
                             runCatching {
                                 when (action) {
-                                    HomeQuickAction.QURAN -> {
-                                        recordLastReading("القرآن الكريم • فهرس السور", action.id)
-                                        activeToolPageState.value = QuickToolPage.QURAN
+                                    HomeQuickAction.AZKAR -> {
+                                        recordLastReading("الأذكار اليومية", action)
+                                        selectedTabState.value = MainBottomTab.AZKAR
+                                        selectedAzkarCategoryState.value = null
                                     }
-                                    HomeQuickAction.AUDIO -> {
-                                        recordLastReading("الصوتيات والتذكير الصوتي", action.id)
-                                        activeToolPageState.value = QuickToolPage.AUDIO
-                                    }
-                                    HomeQuickAction.PRAYER -> {
-                                        recordLastReading("دليل الصلاة والخشوع", action.id)
-                                        activeToolPageState.value = QuickToolPage.PRAYER_GUIDE
+                                    HomeQuickAction.DUA -> {
+                                        recordLastReading("الأدعية المختارة", action)
+                                        selectedTabState.value = MainBottomTab.DUA
                                     }
                                     HomeQuickAction.FOLLOW_US -> {
+                                        recordLastReading("تابعنا ومشاركة التطبيق", action)
                                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                             type = "text/plain"
                                             putExtra(
@@ -637,26 +749,9 @@ fun AtharMuslimApp(
                                         }
                                         context.startActivity(chooser)
                                     }
-                                    HomeQuickAction.HADITH -> {
-                                        recordLastReading("الأحاديث • فئات الكتب الستة", action.id)
-                                        hadithCategoriesOpenState.value = true
-                                    }
-                                    HomeQuickAction.AZKAR -> {
-                                        recordLastReading("الأذكار اليومية", action.id)
-                                        selectedTabState.value = MainBottomTab.AZKAR
-                                        selectedAzkarCategoryState.value = null
-                                    }
-                                    HomeQuickAction.DUA -> {
-                                        recordLastReading("الأدعية المختارة", action.id)
-                                        selectedTabState.value = MainBottomTab.DUA
-                                    }
-                                    HomeQuickAction.TASBIH -> {
-                                        recordLastReading("المسبحة الإلكترونية", action.id)
-                                        activeToolPageState.value = QuickToolPage.TASBIH
-                                    }
-                                    HomeQuickAction.QIBLA -> {
-                                        recordLastReading("بوصلة القبلة", action.id)
-                                        activeToolPageState.value = QuickToolPage.QIBLA
+                                    else -> {
+                                        recordLastReading(action.title, action)
+                                        activeHomeActionState.value = action
                                     }
                                 }
                             }
@@ -673,7 +768,7 @@ fun AtharMuslimApp(
                             soundEnabled = soundEnabled,
                             hapticEnabled = vibrationEnabled,
                             onSelectCategory = { cat ->
-                                recordLastReading(cat.title, HomeQuickAction.AZKAR.id)
+                                recordLastReading(cat.title, HomeQuickAction.AZKAR)
                                 selectedAzkarCategoryState.value = cat
                             }
                         )
@@ -710,11 +805,13 @@ fun AtharMuslimApp(
                         onToggleVoiceAzkar = { checked ->
                             voiceAzkarEnabledState.value = checked
                             prefs.edit().putBoolean("voice_azkar_enabled", checked).apply()
-                            if (checked) {
-                                AzkarReminderReceiver.scheduleVoiceReminderLoop(context, voiceIntensity)
-                                VoiceAzkarPlayer.playNextVoiceReminder(context, voiceIntensity)
-                            } else {
-                                AzkarReminderReceiver.cancelVoiceReminderLoop(context)
+                            runCatching {
+                                if (checked) {
+                                    AzkarReminderReceiver.scheduleVoiceReminderLoop(context, voiceIntensity)
+                                    VoiceAzkarPlayer.playNextVoiceReminder(context, voiceIntensity)
+                                } else {
+                                    AzkarReminderReceiver.cancelVoiceReminderLoop(context)
+                                }
                             }
                         },
                         voiceIntensity = voiceIntensity,
@@ -722,7 +819,9 @@ fun AtharMuslimApp(
                             voiceIntensityState.value = level
                             prefs.edit().putString("voice_intensity", level.id).apply()
                             if (voiceAzkarEnabled) {
-                                AzkarReminderReceiver.scheduleVoiceReminderLoop(context, level)
+                                runCatching {
+                                    AzkarReminderReceiver.scheduleVoiceReminderLoop(context, level)
+                                }
                             }
                         },
                         discoveredVoicesCount = discoveredVoicesCount,
@@ -731,7 +830,7 @@ fun AtharMuslimApp(
                             remindersEnabledState.value = checked
                             prefs.edit().putBoolean("reminders_enabled", checked).apply()
                             if (checked) {
-                                AzkarReminderReceiver.scheduleAllDailyReminders(context)
+                                runCatching { AzkarReminderReceiver.scheduleAllDailyReminders(context) }
                             }
                         },
                         soundEnabled = soundEnabled,
@@ -752,88 +851,6 @@ fun AtharMuslimApp(
                         onResetAllCounts = { resetAllCountsToDefault() },
                         onRequestPermissions = { triggerPermissionsRequest() },
                         onBackToHome = { selectedTabState.value = MainBottomTab.HOME }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HadithSixCategoriesVerticalList(
-    categories: List<HadithTopic>,
-    soundEnabled: Boolean,
-    hapticEnabled: Boolean,
-    onSelectTopic: (HadithTopic) -> Unit
-) {
-    val context = LocalContext.current
-    val view = LocalView.current
-    val scheme = MaterialTheme.colorScheme
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
-    ) {
-        items(categories, key = { it.name }) { topic ->
-            Card(
-                onClick = {
-                    SoundHelper.playSystemTouchSound(context, soundEnabled, view, hapticEnabled)
-                    onSelectTopic(topic)
-                },
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                border = BorderStroke(1.2.dp, scheme.outlineVariant),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = scheme.primaryContainer,
-                            modifier = Modifier.size(42.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = topic.icon,
-                                    contentDescription = null,
-                                    tint = scheme.primary,
-                                    modifier = Modifier.size(21.dp)
-                                )
-                            }
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = topic.title,
-                                color = scheme.onSurface,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                            Text(
-                                text = topic.subtitle,
-                                color = scheme.onSurfaceVariant,
-                                fontSize = 11.5.sp
-                            )
-                        }
-                    }
-                    Icon(
-                        imageVector = Icons.Rounded.ChevronLeft,
-                        contentDescription = null,
-                        tint = scheme.primary,
-                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -870,12 +887,14 @@ private fun AzkarCategoriesVerticalList(
 
             Card(
                 onClick = {
-                    SoundHelper.playZikrPressSound(
-                        enabled = soundEnabled,
-                        isCompletion = false,
-                        view = view,
-                        hapticEnabled = hapticEnabled
-                    )
+                    runCatching {
+                        SoundHelper.playZikrPressSound(
+                            enabled = soundEnabled,
+                            isCompletion = false,
+                            view = view,
+                            hapticEnabled = hapticEnabled
+                        )
+                    }
                     onSelectCategory(category)
                 },
                 shape = RoundedCornerShape(18.dp),
@@ -967,180 +986,6 @@ private fun AzkarCategoriesVerticalList(
                             tint = scheme.primary,
                             modifier = Modifier.size(22.dp)
                         )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HadithTopicDetailScreen(
-    topic: HadithTopic,
-    isLoading: Boolean,
-    loadResult: HadithLoadResult?,
-    favoriteMap: Map<Int, ZikrItem>,
-    countsMap: MutableMap<Int, Int>,
-    soundEnabled: Boolean,
-    vibrationEnabled: Boolean,
-    fontScaleStep: Int,
-    onRetry: () -> Unit,
-    onToggleFavorite: (ZikrItem) -> Unit,
-    onSaveCount: (Int, Int) -> Unit
-) {
-    val context = LocalContext.current
-    val view = LocalView.current
-    val scheme = MaterialTheme.colorScheme
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (topic.isFavorites) {
-            val favList = favoriteMap.values.toList()
-            if (favList.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "لا توجد أحاديث في المفضلة بعد.",
-                        color = scheme.onSurface,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 6.dp, bottom = 18.dp)
-                ) {
-                    items(favList, key = { it.id }) { hadithItem ->
-                        val rem = countsMap[hadithItem.id] ?: hadithItem.count
-                        ZikrCard(
-                            item = hadithItem,
-                            remainingCount = rem,
-                            onDecrement = {
-                                if (rem > 0) {
-                                    val nextVal = rem - 1
-                                    countsMap[hadithItem.id] = nextVal
-                                    onSaveCount(hadithItem.id, nextVal)
-                                }
-                            },
-                            isZikrMode = false,
-                            isFavorite = favoriteMap.containsKey(hadithItem.id),
-                            showFavoriteButton = true,
-                            onToggleFavorite = { onToggleFavorite(hadithItem) },
-                            soundEnabled = soundEnabled,
-                            vibrationEnabled = vibrationEnabled,
-                            fontScaleStep = fontScaleStep
-                        )
-                    }
-                }
-            }
-            return@Column
-        }
-
-        when {
-            isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = scheme.primary)
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = "جاري جلب الأحاديث...",
-                            color = scheme.onSurface,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-
-            loadResult is HadithLoadResult.Success -> {
-                val list = loadResult.items
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 6.dp, bottom = 18.dp)
-                ) {
-                    items(list, key = { it.id }) { hadithItem ->
-                        val rem = countsMap[hadithItem.id] ?: hadithItem.count
-                        ZikrCard(
-                            item = hadithItem,
-                            remainingCount = rem,
-                            onDecrement = {
-                                if (rem > 0) {
-                                    val nextVal = rem - 1
-                                    countsMap[hadithItem.id] = nextVal
-                                    onSaveCount(hadithItem.id, nextVal)
-                                }
-                            },
-                            isZikrMode = false,
-                            isFavorite = favoriteMap.containsKey(hadithItem.id),
-                            showFavoriteButton = true,
-                            onToggleFavorite = { onToggleFavorite(hadithItem) },
-                            soundEnabled = soundEnabled,
-                            vibrationEnabled = vibrationEnabled,
-                            fontScaleStep = fontScaleStep
-                        )
-                    }
-                }
-            }
-
-            else -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                        border = BorderStroke(1.5.dp, scheme.outlineVariant),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(22.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Construction,
-                                contentDescription = null,
-                                tint = scheme.primary,
-                                modifier = Modifier.size(36.dp)
-                            )
-                            Text(
-                                text = "هذا القسم قيد التطوير",
-                                color = scheme.onSurface,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                textAlign = TextAlign.Center
-                            )
-                            Button(
-                                onClick = {
-                                    SoundHelper.playSystemTouchSound(
-                                        context = context,
-                                        enabled = soundEnabled,
-                                        view = view,
-                                        hapticEnabled = vibrationEnabled
-                                    )
-                                    onRetry()
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = scheme.primary)
-                            ) {
-                                Text("إعادة المحاولة", color = scheme.onPrimary, fontWeight = FontWeight.Bold)
-                            }
-                        }
                     }
                 }
             }
