@@ -105,22 +105,18 @@ fun QuranReaderScreen(
     val toastMessage = actionToastMessageState.value
 
     val quranFontFamily = remember {
-        try {
+        runCatching {
             val resId = context.resources.getIdentifier("quran_font", "font", context.packageName)
-            if (resId != 0) {
-                FontFamily(Font(resId))
-            } else {
-                FontFamily.Serif
-            }
-        } catch (_: Exception) {
-            FontFamily.Serif
-        }
+            if (resId != 0) FontFamily(Font(resId)) else FontFamily.Serif
+        }.getOrElse { FontFamily.Serif }
     }
 
-    val surahIndex = remember { KingFahadQuranRepository.getFullSurahIndex() }
+    val surahIndex = remember {
+        runCatching { KingFahadQuranRepository.getFullSurahIndex() }.getOrElse { emptyList() }
+    }
     val surahAyahs = remember(activeSurahNumber) {
         if (activeSurahNumber > 0) {
-            KingFahadQuranRepository.getAyahsForSurah(activeSurahNumber)
+            runCatching { KingFahadQuranRepository.getAyahsForSurah(activeSurahNumber) }.getOrElse { emptyList() }
         } else {
             emptyList()
         }
@@ -138,7 +134,7 @@ fun QuranReaderScreen(
     LaunchedEffect(activeSurahNumber, targetAyahNumber, surahAyahs.size) {
         if (activeSurahNumber > 0 && surahAyahs.isNotEmpty()) {
             val idx = (targetAyahNumber - 1).coerceIn(0, surahAyahs.lastIndex)
-            listState.scrollToItem(idx)
+            runCatching { listState.scrollToItem(idx) }
         }
     }
 
@@ -156,7 +152,7 @@ fun QuranReaderScreen(
             val stepDelayMs = (95L - (scrollSpeed * 7.5f).toLong()).coerceIn(18L, 95L)
             val stepPx = 1.5f + scrollSpeed * 0.65f
             delay(stepDelayMs)
-            listState.dispatchRawDelta(stepPx)
+            runCatching { listState.dispatchRawDelta(stepPx) }
         }
     }
 
