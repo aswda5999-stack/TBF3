@@ -24,7 +24,7 @@ enum class MainBottomTab(
         icon = Icons.Rounded.AutoStories
     ),
     SETTINGS(
-        label = "الضبط",
+        label = "الاعدادات",
         icon = Icons.Rounded.Settings
     )
 }
