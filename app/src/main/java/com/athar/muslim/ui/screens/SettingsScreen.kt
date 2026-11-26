@@ -60,8 +60,8 @@ import com.athar.muslim.model.VoiceReminderIntensity
 import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.theme.AppThemePreset
 
-private enum class SettingsSection(val sectionTitle: String, val sectionSubtitle: String) {
-    MAIN("الضبط والإعدادات", "إعدادات موسّعة ومنظمة لتطبيق أثر مسلم"),
+enum class SettingsSection(val sectionTitle: String, val sectionSubtitle: String) {
+    MAIN("الضبط والإعدادات", "إعدادات موسّعة ومنظمة لتطبيق أثر مسلم Pro"),
     THEMES("الثيمات", "اختر من بين 5 ثيمات متكاملة"),
     VOICE_AZKAR("الأذكار الصوتية", "قراءة صوتية تلقائية وشدة التذكير"),
     NOTIFICATIONS("الإشعارات", "تخصيص تنبيهات الأذكار اليومية"),
@@ -108,7 +108,7 @@ fun SettingsScreen(
     }
 
     BackHandler(enabled = true) {
-        if (sectionState.value != SettingsSection.MAIN) {
+        if (activeSection != SettingsSection.MAIN) {
             sectionState.value = SettingsSection.MAIN
         } else if (onBackToHome !== onBack) {
             onBackToHome()
@@ -218,7 +218,7 @@ fun SettingsScreen(
                     item {
                         CompactSettingRow(
                             title = "القراءة والصوت والعدادات",
-                            subtitle = "حجم الخط، صوت اللمس، الاهتزاز، وتصفير العدادات",
+                            subtitle = "حجم الخط، صوت النظام، الاهتزاز، وتصفير العدادات",
                             icon = Icons.Rounded.FormatSize,
                             onClick = {
                                 clickSound()
@@ -231,7 +231,7 @@ fun SettingsScreen(
                     item {
                         CompactSettingRow(
                             title = "الأذونات وعن التطبيق",
-                            subtitle = "إدارة الأذونات ومعلومات تطبيق أثر مسلم",
+                            subtitle = "إدارة الأذونات ومعلومات تطبيق أثر مسلم Pro",
                             icon = Icons.Rounded.Security,
                             onClick = {
                                 clickSound()
@@ -553,7 +553,7 @@ fun SettingsScreen(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         Icon(Icons.Rounded.VolumeUp, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(17.dp))
-                                        Text("صوت اللمس والأذكار", color = scheme.onSurface, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+                                        Text("صوت النظام والأذكار", color = scheme.onSurface, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Switch(
                                         checked = soundEnabled,
@@ -643,7 +643,7 @@ fun SettingsScreen(
                             ) {
                                 Icon(Icons.Rounded.Info, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(22.dp))
                                 Text(
-                                    text = "تطبيق أثر مسلم",
+                                    text = "تطبيق أثر مسلم • Pro",
                                     color = scheme.onSurface,
                                     fontSize = 14.5.sp,
                                     fontWeight = FontWeight.ExtraBold
