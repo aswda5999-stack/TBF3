@@ -56,26 +56,24 @@ fun HomeDashboardScreen(
     val actions = HomeQuickActionRegistry.orderedActions()
     val rows = actions.chunked(3)
 
-    fun triggerAction(action: HomeQuickAction) {
-        runCatching {
-            val isZikrBtn = action == HomeQuickAction.AZKAR ||
-                action == HomeQuickAction.DUA ||
-                action == HomeQuickAction.TASBIH
-            if (isZikrBtn) {
-                SoundHelper.playZikrPressSound(
-                    enabled = soundEnabled,
-                    isCompletion = false,
-                    view = view,
-                    hapticEnabled = hapticEnabled
-                )
-            } else {
-                SoundHelper.playSystemTouchSound(
-                    context = context,
-                    enabled = soundEnabled,
-                    view = view,
-                    hapticEnabled = hapticEnabled
-                )
-            }
+    fun handleButtonPress(action: HomeQuickAction) {
+        val isZikrBtn = action == HomeQuickAction.AZKAR ||
+            action == HomeQuickAction.DUA ||
+            action == HomeQuickAction.TASBIH
+        if (isZikrBtn) {
+            SoundHelper.playZikrPressSound(
+                enabled = soundEnabled,
+                isCompletion = false,
+                view = view,
+                hapticEnabled = hapticEnabled
+            )
+        } else {
+            SoundHelper.playSystemTouchSound(
+                context = context,
+                enabled = soundEnabled,
+                view = view,
+                hapticEnabled = hapticEnabled
+            )
         }
         onActionClick(action)
     }
@@ -90,7 +88,7 @@ fun HomeDashboardScreen(
     ) {
         item(key = "continue_reading_card") {
             Card(
-                onClick = { triggerAction(lastReadingAction) },
+                onClick = { handleButtonPress(lastReadingAction) },
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = scheme.surface),
                 border = BorderStroke(1.2.dp, scheme.outlineVariant),
@@ -176,7 +174,7 @@ fun HomeDashboardScreen(
                 rowItems.forEach { action ->
                     QuickGridButton(
                         action = action,
-                        onClick = { triggerAction(action) },
+                        onClick = { handleButtonPress(action) },
                         modifier = Modifier.weight(1f)
                     )
                 }
