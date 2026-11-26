@@ -179,6 +179,7 @@ fun AtharMuslimApp(
     }
 
     val favoriteHadiths = remember { mutableStateMapOf<Int, ZikrItem>() }
+    val favoriteQuranIds = remember { mutableStateMapOf<Int, Boolean>() }
     val subCategories = AzkarSubCategory.entries
 
     val currentAzkarList = remember(selectedAzkarCategory) {
@@ -510,6 +511,14 @@ fun AtharMuslimApp(
                     page = activeToolPage,
                     soundEnabled = soundEnabled,
                     hapticEnabled = vibrationEnabled,
+                    favoriteQuranIds = favoriteQuranIds.keys,
+                    onToggleFavoriteQuranAyah = { ayahId ->
+                        if (favoriteQuranIds.containsKey(ayahId)) {
+                            favoriteQuranIds.remove(ayahId)
+                        } else {
+                            favoriteQuranIds[ayahId] = true
+                        }
+                    },
                     onOpenMorningAzkar = {
                         activeToolPageState.value = null
                         selectedTabState.value = MainBottomTab.AZKAR
@@ -545,7 +554,7 @@ fun AtharMuslimApp(
             when (selectedTab) {
                 MainBottomTab.HOME -> {
                     HomeDashboardScreen(
-                        favoritesCount = favoriteHadiths.size,
+                        favoritesCount = favoriteHadiths.size + favoriteQuranIds.size,
                         soundEnabled = soundEnabled,
                         hapticEnabled = vibrationEnabled,
                         onActionClick = { action ->
