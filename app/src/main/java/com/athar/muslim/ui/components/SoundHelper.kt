@@ -6,6 +6,7 @@ import android.media.ToneGenerator
 import android.os.Handler
 import android.os.Looper
 import android.view.HapticFeedbackConstants
+import android.view.SoundEffectConstants
 import android.view.View
 
 object SoundHelper {
@@ -23,6 +24,7 @@ object SoundHelper {
         }
     }
 
+    /** صوت لمس النظام الأصلي للتنقل والأزرار العامة */
     fun playSystemTouchSound(
         context: Context,
         enabled: Boolean,
@@ -38,13 +40,18 @@ object SoundHelper {
         if (!enabled) return
         mainHandler.post {
             try {
-                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                audioManager?.playSoundEffect(AudioManager.FX_KEY_CLICK, -1f)
+                if (view != null) {
+                    view.playSoundEffect(SoundEffectConstants.CLICK)
+                } else {
+                    val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                    audioManager?.playSoundEffect(AudioManager.FX_KEY_CLICK)
+                }
             } catch (_: Exception) {
             }
         }
     }
 
+    /** صوت مميز واحترافي مخصص للضغط على الأذكار والتسبيح */
     fun playZikrPressSound(
         enabled: Boolean,
         isCompletion: Boolean = false,
