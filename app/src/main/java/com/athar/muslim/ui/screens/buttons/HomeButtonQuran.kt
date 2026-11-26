@@ -5,7 +5,7 @@ import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.ui.graphics.vector.ImageVector
 
 object HomeButtonQuran {
-    const val ID = "quran"
+    const val ID = "quran_index"
     const val TITLE = "القرآن الكريم"
     val ICON: ImageVector = Icons.Rounded.MenuBook
 }
