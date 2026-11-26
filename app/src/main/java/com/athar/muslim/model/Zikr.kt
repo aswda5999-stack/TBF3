@@ -103,6 +103,22 @@ enum class HadithTopic(
     )
 }
 
+enum class VoiceReminderIntensity(
+    val id: String,
+    val label: String,
+    val volumeFloat: Float,
+    val intervalMinutes: Long
+) {
+    LOW("low", "منخفض", 0.35f, 60L),
+    MEDIUM("medium", "متوسط", 0.68f, 30L),
+    HIGH("high", "مرتفع", 1.0f, 15L);
+
+    companion object {
+        fun fromId(value: String?): VoiceReminderIntensity =
+            entries.firstOrNull { it.id == value } ?: MEDIUM
+    }
+}
+
 sealed interface HadithLoadResult {
     data class Success(val items: List<ZikrItem>) : HadithLoadResult
     data class Error(val message: String) : HadithLoadResult
