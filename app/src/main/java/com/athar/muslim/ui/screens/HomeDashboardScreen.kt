@@ -43,7 +43,7 @@ import com.athar.muslim.ui.screens.buttons.HomeQuickActionRegistry
 @Composable
 fun HomeDashboardScreen(
     favoritesCount: Int,
-    lastReadingTitle: String = "القرآن الكريم • فهرس السور الكامل",
+    lastReadingTitle: String = "القرآن الكريم • فهرس السور",
     lastReadingAction: HomeQuickAction = HomeQuickAction.QURAN,
     soundEnabled: Boolean = true,
     hapticEnabled: Boolean = true,
@@ -56,12 +56,12 @@ fun HomeDashboardScreen(
     val actions = HomeQuickActionRegistry.orderedActions()
     val rows = actions.chunked(3)
 
-    fun handleButtonPress(action: HomeQuickAction) {
+    fun triggerSafePress(action: HomeQuickAction) {
         runCatching {
-            val isZikrBtn = action == HomeQuickAction.AZKAR ||
+            val isZikrStyle = action == HomeQuickAction.AZKAR ||
                 action == HomeQuickAction.DUA ||
                 action == HomeQuickAction.TASBIH
-            if (isZikrBtn) {
+            if (isZikrStyle) {
                 SoundHelper.playZikrPressSound(
                     enabled = soundEnabled,
                     isCompletion = false,
@@ -92,7 +92,7 @@ fun HomeDashboardScreen(
     ) {
         item(key = "continue_reading_card") {
             Card(
-                onClick = { handleButtonPress(lastReadingAction) },
+                onClick = { triggerSafePress(lastReadingAction) },
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = scheme.surface),
                 border = BorderStroke(1.2.dp, scheme.outlineVariant),
@@ -178,7 +178,7 @@ fun HomeDashboardScreen(
                 rowItems.forEach { action ->
                     QuickGridButton(
                         action = action,
-                        onClick = { handleButtonPress(action) },
+                        onClick = { triggerSafePress(action) },
                         modifier = Modifier.weight(1f)
                     )
                 }
