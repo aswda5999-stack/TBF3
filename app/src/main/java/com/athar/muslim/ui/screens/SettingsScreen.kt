@@ -26,7 +26,9 @@ import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.Button
@@ -48,25 +50,34 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.athar.muslim.model.VoiceReminderIntensity
 import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.theme.AppThemePreset
 
 private enum class SettingsSection(val sectionTitle: String, val sectionSubtitle: String) {
-    MAIN("الضبط والإعدادات", "إعدادات منظمة وموسّعة لتطبيق أثر مسلم"),
+    MAIN("الضبط والإعدادات", "إعدادات موسّعة ومنظمة لتطبيق أثر مسلم"),
     THEMES("الثيمات", "اختر من بين 5 ثيمات متكاملة"),
+    VOICE_AZKAR("الأذكار الصوتية", "قراءة صوتية تلقائية وشدة التذكير"),
     NOTIFICATIONS("الإشعارات", "تخصيص تنبيهات الأذكار اليومية"),
     READING("القراءة والصوت والعدادات", "حجم الخط، الصوت، الاهتزاز، والتصفير"),
-    ABOUT("عن التطبيق", "معلومات التطبيق وخصائصه")
+    PERMISSIONS_ABOUT("الأذونات وعن التطبيق", "حالة الأذونات ومعلومات التطبيق")
 }
 
 @Composable
 fun SettingsScreen(
     selectedTheme: AppThemePreset,
     onSelectTheme: (AppThemePreset) -> Unit,
+    voiceAzkarEnabled: Boolean,
+    onToggleVoiceAzkar: (Boolean) -> Unit,
+    voiceIntensity: VoiceReminderIntensity,
+    onSelectVoiceIntensity: (VoiceReminderIntensity) -> Unit,
+    discoveredVoicesCount: Int,
     remindersEnabled: Boolean,
     onToggleReminders: (Boolean) -> Unit,
     soundEnabled: Boolean,
@@ -76,13 +87,25 @@ fun SettingsScreen(
     fontScaleStep: Int,
     onChangeFontScale: (Int) -> Unit,
     onResetAllCounts: () -> Unit,
+    onRequestPermissions: () -> Unit,
     onBack: () -> Unit = {},
     onBackToHome: () -> Unit = onBack,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val view = LocalView.current
     val sectionState = remember { mutableStateOf(SettingsSection.MAIN) }
     val activeSection = sectionState.value
+
+    fun clickSound() {
+        SoundHelper.playSystemTouchSound(
+            context = context,
+            enabled = soundEnabled,
+            view = view,
+            hapticEnabled = vibrationEnabled
+        )
+    }
 
     BackHandler(enabled = true) {
         if (sectionState.value != SettingsSection.MAIN) {
@@ -114,7 +137,7 @@ fun SettingsScreen(
                 ) {
                     IconButton(
                         onClick = {
-                            SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                            clickSound()
                             sectionState.value = SettingsSection.MAIN
                         }
                     ) {
@@ -148,7 +171,7 @@ fun SettingsScreen(
                         .fillMaxSize()
                         .padding(horizontal = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(top = 10.dp, bottom = 20.dp)
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
                     item { SettingsGroupLabel("المظهر والتخصيص") }
                     item {
@@ -157,47 +180,169 @@ fun SettingsScreen(
                             subtitle = "الثيم الحالي: ${selectedTheme.title}",
                             icon = Icons.Rounded.Palette,
                             onClick = {
-                                SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                clickSound()
                                 sectionState.value = SettingsSection.THEMES
                             }
                         )
                     }
 
-                    item { SettingsGroupLabel("التنبيهات والقراءة") }
+                    item { SettingsGroupLabel("التذكير الصوتي والإشعارات") }
+                    item {
+                        CompactSettingRow(
+                            title = "الأذكار الصوتية",
+                            subtitle = if (voiceAzkarEnabled) {
+                                "مفعلة • الشدة: ${voiceIntensity.label} ($discoveredVoicesCount صوت متاح)"
+                            } else {
+                                "مطفأة افتراضياً • الشدة: ${voiceIntensity.label}"
+                            },
+                            icon = Icons.Rounded.RecordVoiceOver,
+                            onClick = {
+                                clickSound()
+                                sectionState.value = SettingsSection.VOICE_AZKAR
+                            }
+                        )
+                    }
                     item {
                         CompactSettingRow(
                             title = "الإشعارات والتذكيرات",
                             subtitle = if (remindersEnabled) "مفعلة للأذكار اليومية" else "متوقفة حالياً",
                             icon = Icons.Rounded.NotificationsActive,
                             onClick = {
-                                SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                clickSound()
                                 sectionState.value = SettingsSection.NOTIFICATIONS
                             }
                         )
                     }
+
+                    item { SettingsGroupLabel("القراءة والصوت والعدادات") }
                     item {
                         CompactSettingRow(
                             title = "القراءة والصوت والعدادات",
                             subtitle = "حجم الخط، صوت اللمس، الاهتزاز، وتصفير العدادات",
                             icon = Icons.Rounded.FormatSize,
                             onClick = {
-                                SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                clickSound()
                                 sectionState.value = SettingsSection.READING
                             }
                         )
                     }
 
-                    item { SettingsGroupLabel("المعلومات") }
+                    item { SettingsGroupLabel("النظام والمعلومات") }
                     item {
                         CompactSettingRow(
-                            title = "عن التطبيق",
-                            subtitle = "معلومات تطبيق أثر مسلم ومميزاته",
-                            icon = Icons.Rounded.Info,
+                            title = "الأذونات وعن التطبيق",
+                            subtitle = "إدارة الأذونات ومعلومات تطبيق أثر مسلم",
+                            icon = Icons.Rounded.Security,
                             onClick = {
-                                SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                sectionState.value = SettingsSection.ABOUT
+                                clickSound()
+                                sectionState.value = SettingsSection.PERMISSIONS_ABOUT
                             }
                         )
+                    }
+                }
+            }
+
+            SettingsSection.VOICE_AZKAR -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
+                ) {
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = scheme.surface),
+                            border = BorderStroke(1.dp, scheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "تشغيل الأذكار الصوتية",
+                                            color = scheme.onSurface,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "يستمر الهاتف في قراءة التذكير الصوتي حتى عند إطفاء الشاشة",
+                                            color = scheme.onSurfaceVariant,
+                                            fontSize = 10.5.sp
+                                        )
+                                    }
+                                    Switch(
+                                        checked = voiceAzkarEnabled,
+                                        onCheckedChange = { checked ->
+                                            clickSound()
+                                            onToggleVoiceAzkar(checked)
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = scheme.onPrimary,
+                                            checkedTrackColor = scheme.primary
+                                        )
+                                    )
+                                }
+
+                                HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
+
+                                Text(
+                                    text = "شدة التذكير",
+                                    color = scheme.onSurface,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    VoiceReminderIntensity.entries.forEach { level ->
+                                        val isSelected = level == voiceIntensity
+                                        Surface(
+                                            onClick = {
+                                                clickSound()
+                                                onSelectVoiceIntensity(level)
+                                            },
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = if (isSelected) scheme.primary else scheme.primaryContainer,
+                                            border = BorderStroke(
+                                                1.dp,
+                                                if (isSelected) scheme.tertiary else scheme.outlineVariant
+                                            ),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier.padding(vertical = 8.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = level.label,
+                                                    color = if (isSelected) scheme.onPrimary else scheme.onPrimaryContainer,
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Text(
+                                    text = "الأصوات المكتشفة في res/raw: $discoveredVoicesCount ملف صوتي (يدعم 15 إلى 20+ صوتاً تلقائياً).",
+                                    color = scheme.onSurfaceVariant,
+                                    fontSize = 10.5.sp,
+                                    lineHeight = 16.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -208,13 +353,13 @@ fun SettingsScreen(
                         .fillMaxSize()
                         .padding(horizontal = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(top = 10.dp, bottom = 20.dp)
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
                     items(AppThemePreset.entries, key = { it.id }) { preset ->
                         val isSelected = preset == selectedTheme
                         Surface(
                             onClick = {
-                                SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                clickSound()
                                 onSelectTheme(preset)
                             },
                             shape = RoundedCornerShape(14.dp),
@@ -290,7 +435,7 @@ fun SettingsScreen(
                         .fillMaxSize()
                         .padding(horizontal = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(top = 10.dp, bottom = 20.dp)
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
                     item {
                         Card(
@@ -322,7 +467,7 @@ fun SettingsScreen(
                                 Switch(
                                     checked = remindersEnabled,
                                     onCheckedChange = { checked ->
-                                        SoundHelper.playTapSound(enabled = checked || soundEnabled, isCompletion = false)
+                                        clickSound()
                                         onToggleReminders(checked)
                                     },
                                     colors = SwitchDefaults.colors(
@@ -342,7 +487,7 @@ fun SettingsScreen(
                         .fillMaxSize()
                         .padding(horizontal = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(top = 10.dp, bottom = 20.dp)
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
                     item {
                         Card(
@@ -370,7 +515,7 @@ fun SettingsScreen(
                                         val selected = fontScaleStep == step
                                         Surface(
                                             onClick = {
-                                                SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                                clickSound()
                                                 onChangeFontScale(step)
                                             },
                                             shape = RoundedCornerShape(10.dp),
@@ -408,14 +553,14 @@ fun SettingsScreen(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         Icon(Icons.Rounded.VolumeUp, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(17.dp))
-                                        Text("صوت اللمس", color = scheme.onSurface, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+                                        Text("صوت اللمس والأذكار", color = scheme.onSurface, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Switch(
                                         checked = soundEnabled,
                                         onCheckedChange = { checked ->
                                             onToggleSound(checked)
                                             if (checked) {
-                                                SoundHelper.playTapSound(enabled = true, isCompletion = false)
+                                                SoundHelper.playSystemTouchSound(context, true, view, vibrationEnabled)
                                             }
                                         },
                                         colors = SwitchDefaults.colors(
@@ -440,8 +585,8 @@ fun SettingsScreen(
                                     Switch(
                                         checked = vibrationEnabled,
                                         onCheckedChange = { checked ->
-                                            SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
                                             onToggleVibration(checked)
+                                            clickSound()
                                         },
                                         colors = SwitchDefaults.colors(
                                             checkedThumbColor = scheme.onPrimary,
@@ -454,7 +599,12 @@ fun SettingsScreen(
 
                                 Button(
                                     onClick = {
-                                        SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = true)
+                                        SoundHelper.playZikrPressSound(
+                                            enabled = soundEnabled,
+                                            isCompletion = true,
+                                            view = view,
+                                            hapticEnabled = vibrationEnabled
+                                        )
                                         onResetAllCounts()
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = scheme.primary),
@@ -471,13 +621,13 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsSection.ABOUT -> {
+            SettingsSection.PERMISSIONS_ABOUT -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(top = 10.dp, bottom = 20.dp)
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 22.dp)
                 ) {
                     item {
                         Card(
@@ -489,8 +639,9 @@ fun SettingsScreen(
                             Column(
                                 modifier = Modifier.padding(14.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                Icon(Icons.Rounded.Info, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(22.dp))
                                 Text(
                                     text = "تطبيق أثر مسلم",
                                     color = scheme.onSurface,
@@ -498,12 +649,23 @@ fun SettingsScreen(
                                     fontWeight = FontWeight.ExtraBold
                                 )
                                 Text(
-                                    text = "تطبيق إسلامي متكامل للأذكار والأدعية والأحاديث مع 5 ثيمات كاملة وواجهة سريعة ومستقرة.",
+                                    text = "يشمل أذونات الموقع بدقة، الصوت، التخزين، الإشعارات، والمنبهات الدقيقة لدعم القبلة والأذكار الصوتية.",
                                     color = scheme.onSurfaceVariant,
-                                    fontSize = 11.5.sp,
-                                    lineHeight = 18.sp,
+                                    fontSize = 11.sp,
+                                    lineHeight = 17.sp,
                                     textAlign = TextAlign.Center
                                 )
+                                Button(
+                                    onClick = {
+                                        clickSound()
+                                        onRequestPermissions()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = scheme.primary),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("مراجعة وطلب الأذونات", color = scheme.onPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
