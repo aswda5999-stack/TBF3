@@ -42,6 +42,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -89,6 +90,7 @@ fun QuranReaderScreen(
     val scrollSpeedState = remember { mutableFloatStateOf(0f) }
     val activeSurahNumberState = remember { mutableIntStateOf(0) }
     val targetAyahNumberState = remember { mutableIntStateOf(1) }
+    val searchQueryState = remember { mutableStateOf("") }
     val selectedMenuAyahState = remember { mutableStateOf<QuranAyah?>(null) }
     val tafsirDialogAyahState = remember { mutableStateOf<QuranAyah?>(null) }
     val underDevDialogState = remember { mutableStateOf(false) }
@@ -99,20 +101,44 @@ fun QuranReaderScreen(
     val scrollSpeed = scrollSpeedState.floatValue
     val activeSurahNumber = activeSurahNumberState.intValue
     val targetAyahNumber = targetAyahNumberState.intValue
+    val searchQuery = searchQueryState.value
     val selectedMenuAyah = selectedMenuAyahState.value
     val tafsirDialogAyah = tafsirDialogAyahState.value
     val isUnderDev = underDevDialogState.value
     val toastMessage = actionToastMessageState.value
 
     val quranFontFamily = remember {
-        runCatching {
-            val resId = context.resources.getIdentifier("quran_font", "font", context.packageName)
-            if (resId != 0) FontFamily(Font(resId)) else FontFamily.Serif
-        }.getOrElse { FontFamily.Serif }
+        val candidateFontNames = listOf("quran_font", "uthmanic_hafs", "amiri_quran")
+        var loaded: FontFamily = FontFamily.Serif
+        for (fontName in candidateFontNames) {
+            val resId = runCatching {
+                context.resources.getIdentifier(fontName, "font", context.packageName)
+            }.getOrDefault(0)
+            if (resId != 0) {
+                val created = runCatching { FontFamily(Font(resId)) }.getOrNull()
+                if (created != null) {
+                    loaded = created
+                    break
+                }
+            }
+        }
+        loaded
     }
 
-    val surahIndex = remember {
+    val allSurahs = remember {
         runCatching { KingFahadQuranRepository.getFullSurahIndex() }.getOrElse { emptyList() }
+    }
+    val filteredSurahs = remember(allSurahs, searchQuery) {
+        val q = searchQuery.trim()
+        if (q.isEmpty()) {
+            allSurahs
+        } else {
+            allSurahs.filter { meta ->
+                meta.name.contains(q, ignoreCase = true) ||
+                    meta.number.toString() == q ||
+                    meta.revelationType.contains(q, ignoreCase = true)
+            }
+        }
     }
     val surahAyahs = remember(activeSurahNumber) {
         if (activeSurahNumber > 0) {
@@ -215,7 +241,7 @@ fun QuranReaderScreen(
                     }
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        val currentSurahTitle = surahIndex.firstOrNull { it.number == activeSurahNumber }?.name
+                        val currentSurahTitle = allSurahs.firstOrNull { it.number == activeSurahNumber }?.name
                             ?: "فهرس القرآن الكريم"
                         Text(
                             text = currentSurahTitle,
@@ -272,15 +298,32 @@ fun QuranReaderScreen(
             }
 
             if (activeSurahNumber <= 0) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQueryState.value = it },
+                    singleLine = true,
+                    placeholder = {
+                        Text(
+                            text = "ابحث باسم السورة أو رقمها...",
+                            color = secondaryText,
+                            fontSize = 12.sp
+                        )
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                )
+
                 LazyColumn(
                     userScrollEnabled = true,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 22.dp)
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 22.dp)
                 ) {
-                    items(surahIndex, key = { it.number }) { surah ->
+                    items(filteredSurahs, key = { it.number }) { surah ->
                         SurahIndexRowCard(
                             surah = surah,
                             cardBg = cardBg,
@@ -738,9 +781,10 @@ private fun SurahIndexRowCard(
                         fontWeight = FontWeight.ExtraBold
                     )
                     Text(
-                        text = "${surah.revelationType} • ${surah.ayahCount} آية",
+                        text = "${surah.revelationType} • ${surah.ayahCount} آية • ${surah.summaryTheme}",
                         color = secondaryText,
-                        fontSize = 11.sp
+                        fontSize = 10.5.sp,
+                        lineHeight = 16.sp
                     )
                 }
             }
