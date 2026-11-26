@@ -156,6 +156,7 @@ fun AtharMuslimApp(
     val selectedTabState = remember { mutableStateOf(MainBottomTab.HOME) }
     val activeToolPageState = remember { mutableStateOf<QuickToolPage?>(null) }
     val selectedAzkarCategoryState = remember { mutableStateOf<AzkarSubCategory?>(null) }
+    val hadithCategoriesOpenState = remember { mutableStateOf(false) }
     val selectedHadithTopicState = remember { mutableStateOf<HadithTopic?>(null) }
     val hadithLoadState = remember { mutableStateOf<HadithLoadResult?>(null) }
     val isLoadingHadithState = remember { mutableStateOf(false) }
@@ -173,6 +174,7 @@ fun AtharMuslimApp(
     val selectedTab = selectedTabState.value
     val activeToolPage = activeToolPageState.value
     val selectedAzkarCategory = selectedAzkarCategoryState.value
+    val isHadithCategoriesOpen = hadithCategoriesOpenState.value
     val selectedHadithTopic = selectedHadithTopicState.value
     val favoriteQuranIds = favoriteQuranIdsState.value
 
@@ -262,12 +264,14 @@ fun AtharMuslimApp(
             showExitDialogState.value -> showExitDialogState.value = false
             activeToolPage != null -> activeToolPageState.value = null
             selectedHadithTopic != null -> selectedHadithTopicState.value = null
+            isHadithCategoriesOpen -> hadithCategoriesOpenState.value = false
             selectedTab == MainBottomTab.AZKAR && selectedAzkarCategory != null -> {
                 selectedAzkarCategoryState.value = null
             }
             selectedTab != MainBottomTab.HOME -> {
                 selectedAzkarCategoryState.value = null
                 selectedHadithTopicState.value = null
+                hadithCategoriesOpenState.value = false
                 activeToolPageState.value = null
                 selectedTabState.value = MainBottomTab.HOME
             }
@@ -452,10 +456,12 @@ fun AtharMuslimApp(
 
     val isHomeDashboard = selectedTab == MainBottomTab.HOME &&
         activeToolPage == null &&
-        selectedHadithTopic == null
+        selectedHadithTopic == null &&
+        !isHadithCategoriesOpen
 
     val subtitleBadgeText = activeToolPage?.title
         ?: selectedHadithTopic?.title
+        ?: if (isHadithCategoriesOpen) "فئات الأحاديث (6 فئات)" else null
         ?: when (selectedTab) {
             MainBottomTab.HOME -> "الرئيسية"
             MainBottomTab.AZKAR -> {
@@ -493,6 +499,7 @@ fun AtharMuslimApp(
                     selectedTabState.value = tab
                     activeToolPageState.value = null
                     selectedHadithTopicState.value = null
+                    hadithCategoriesOpenState.value = false
                     if (tab != MainBottomTab.AZKAR) {
                         selectedAzkarCategoryState.value = null
                     }
@@ -552,6 +559,18 @@ fun AtharMuslimApp(
                 return@Box
             }
 
+            if (isHadithCategoriesOpen) {
+                HadithSixCategoriesVerticalList(
+                    categories = HadithTopic.sixMainCategories,
+                    soundEnabled = soundEnabled,
+                    hapticEnabled = vibrationEnabled,
+                    onSelectTopic = { topic ->
+                        selectedHadithTopicState.value = topic
+                    }
+                )
+                return@Box
+            }
+
             when (selectedTab) {
                 MainBottomTab.HOME -> {
                     HomeDashboardScreen(
@@ -566,11 +585,11 @@ fun AtharMuslimApp(
                                 HomeQuickAction.FOLLOW_US -> {
                                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, "تطبيق أثر مسلم — للأذكار والأدعية والأحاديث النبوية.")
+                                        putExtra(Intent.EXTRA_TEXT, "تطبيق أثر مسلم Pro — للأذكار والأدعية والقرآن والأحاديث.")
                                     }
                                     context.startActivity(Intent.createChooser(shareIntent, "مشاركة أثر مسلم"))
                                 }
-                                HomeQuickAction.HADITH -> selectedHadithTopicState.value = HadithTopic.BUKHARI
+                                HomeQuickAction.HADITH -> hadithCategoriesOpenState.value = true
                                 HomeQuickAction.AZKAR -> {
                                     selectedTabState.value = MainBottomTab.AZKAR
                                     selectedAzkarCategoryState.value = null
@@ -668,6 +687,88 @@ fun AtharMuslimApp(
                         onResetAllCounts = { resetAllCountsToDefault() },
                         onRequestPermissions = { triggerPermissionsRequest() },
                         onBackToHome = { selectedTabState.value = MainBottomTab.HOME }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HadithSixCategoriesVerticalList(
+    categories: List<HadithTopic>,
+    soundEnabled: Boolean,
+    hapticEnabled: Boolean,
+    onSelectTopic: (HadithTopic) -> Unit
+) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    val scheme = MaterialTheme.colorScheme
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp)
+    ) {
+        items(categories, key = { it.name }) { topic ->
+            Card(
+                onClick = {
+                    SoundHelper.playSystemTouchSound(context, soundEnabled, view, hapticEnabled)
+                    onSelectTopic(topic)
+                },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = scheme.surface),
+                border = BorderStroke(1.2.dp, scheme.outlineVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = scheme.primaryContainer,
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = topic.icon,
+                                    contentDescription = null,
+                                    tint = scheme.primary,
+                                    modifier = Modifier.size(21.dp)
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = topic.title,
+                                color = scheme.onSurface,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                text = topic.subtitle,
+                                color = scheme.onSurfaceVariant,
+                                fontSize = 11.5.sp
+                            )
+                        }
+                    }
+                    Icon(
+                        imageVector = Icons.Rounded.ChevronLeft,
+                        contentDescription = null,
+                        tint = scheme.primary,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -887,7 +988,7 @@ private fun HadithTopicDetailScreen(
                         CircularProgressIndicator(color = scheme.primary)
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "جاري تحميل الأحاديث...",
+                            text = "جاري جلب الأحاديث...",
                             color = scheme.onSurface,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
