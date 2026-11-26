@@ -162,6 +162,7 @@ fun AtharMuslimApp(
     val retryNonceState = remember { mutableIntStateOf(0) }
     val showExitDialogState = remember { mutableStateOf(false) }
     val permissionStepState = remember { mutableStateOf(PermissionPromptStep.NONE) }
+    val favoriteQuranIdsState = remember { mutableStateOf(emptySet<Int>()) }
 
     val soundEnabled = soundEnabledState.value
     val vibrationEnabled = vibrationEnabledState.value
@@ -173,13 +174,13 @@ fun AtharMuslimApp(
     val activeToolPage = activeToolPageState.value
     val selectedAzkarCategory = selectedAzkarCategoryState.value
     val selectedHadithTopic = selectedHadithTopicState.value
+    val favoriteQuranIds = favoriteQuranIdsState.value
 
     val discoveredVoicesCount = remember {
         VoiceAzkarPlayer.discoverRawVoiceResIds(context).size
     }
 
     val favoriteHadiths = remember { mutableStateMapOf<Int, ZikrItem>() }
-    val favoriteQuranIds = remember { mutableStateMapOf<Int, Boolean>() }
     val subCategories = AzkarSubCategory.entries
 
     val currentAzkarList = remember(selectedAzkarCategory) {
@@ -511,13 +512,13 @@ fun AtharMuslimApp(
                     page = activeToolPage,
                     soundEnabled = soundEnabled,
                     hapticEnabled = vibrationEnabled,
-                    favoriteQuranIds = favoriteQuranIds.keys,
+                    favoriteQuranIds = favoriteQuranIds,
                     onToggleFavoriteQuranAyah = { ayahId ->
-                        if (favoriteQuranIds.containsKey(ayahId)) {
-                            favoriteQuranIds.remove(ayahId)
-                        } else {
-                            favoriteQuranIds[ayahId] = true
+                        val nextSet = favoriteQuranIds.toMutableSet()
+                        if (!nextSet.add(ayahId)) {
+                            nextSet.remove(ayahId)
                         }
+                        favoriteQuranIdsState.value = nextSet
                     },
                     onOpenMorningAzkar = {
                         activeToolPageState.value = null
