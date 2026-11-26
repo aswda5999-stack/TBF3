@@ -4,7 +4,8 @@ data class QuranSurahMeta(
     val number: Int,
     val name: String,
     val ayahCount: Int,
-    val revelationType: String
+    val revelationType: String,
+    val summaryTheme: String
 )
 
 data class QuranAyah(
