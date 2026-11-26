@@ -197,8 +197,7 @@ object KingFahadQuranRepository {
         }
     }
 
-    fun getAyah(surahNumber: Int, ayahNumber: Int): QuranAyah {
-        val list = getAyahsForSurah(surahNumber)
-        return list.firstOrNull { it.ayahNumber == ayahNumber } ?: list.first()
+    fun getAllQuranAyahs(): List<QuranAyah> {
+        return fullSurahIndex.flatMap { meta -> getAyahsForSurah(meta.number) }
     }
 }
