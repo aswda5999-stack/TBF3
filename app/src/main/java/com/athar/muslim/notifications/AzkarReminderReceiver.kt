@@ -24,6 +24,14 @@ import java.util.Calendar
 class AzkarReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (
+            intent.action == Intent.ACTION_BOOT_COMPLETED ||
+            intent.action == Intent.ACTION_MY_PACKAGE_REPLACED
+        ) {
+            scheduleAllDailyReminders(context)
+            return
+        }
+
         val prefs = context.getSharedPreferences("athar_muslim_prefs", Context.MODE_PRIVATE)
         val isVoiceTick = intent.getBooleanExtra(EXTRA_VOICE_TICK, false)
 
