@@ -165,6 +165,19 @@ fun AtharMuslimApp(
     val permissionStepState = remember { mutableStateOf(PermissionPromptStep.NONE) }
     val favoriteQuranIdsState = remember { mutableStateOf(emptySet<Int>()) }
 
+    val lastReadingTitleState = remember {
+        mutableStateOf(
+            prefs.getString("last_reading_title", "القرآن الكريم • فهرس السور الكامل")
+                ?: "القرآن الكريم • فهرس السور الكامل"
+        )
+    }
+    val lastReadingActionIdState = remember {
+        mutableStateOf(
+            prefs.getString("last_reading_action_id", HomeQuickAction.QURAN.id)
+                ?: HomeQuickAction.QURAN.id
+        )
+    }
+
     val soundEnabled = soundEnabledState.value
     val vibrationEnabled = vibrationEnabledState.value
     val remindersEnabled = remindersEnabledState.value
@@ -177,6 +190,18 @@ fun AtharMuslimApp(
     val isHadithCategoriesOpen = hadithCategoriesOpenState.value
     val selectedHadithTopic = selectedHadithTopicState.value
     val favoriteQuranIds = favoriteQuranIdsState.value
+    val lastReadingTitle = lastReadingTitleState.value
+    val lastReadingAction = HomeQuickAction.entries.firstOrNull { it.id == lastReadingActionIdState.value }
+        ?: HomeQuickAction.QURAN
+
+    fun recordLastReading(title: String, action: HomeQuickAction) {
+        lastReadingTitleState.value = title
+        lastReadingActionIdState.value = action.id
+        prefs.edit()
+            .putString("last_reading_title", title)
+            .putString("last_reading_action_id", action.id)
+            .apply()
+    }
 
     val discoveredVoicesCount = remember {
         VoiceAzkarPlayer.discoverRawVoiceResIds(context).size
@@ -528,6 +553,7 @@ fun AtharMuslimApp(
                         favoriteQuranIdsState.value = nextSet
                     },
                     onOpenMorningAzkar = {
+                        recordLastReading("أذكار الصباح", HomeQuickAction.AZKAR)
                         activeToolPageState.value = null
                         selectedTabState.value = MainBottomTab.AZKAR
                         selectedAzkarCategoryState.value = AzkarSubCategory.MORNING
@@ -565,6 +591,7 @@ fun AtharMuslimApp(
                     soundEnabled = soundEnabled,
                     hapticEnabled = vibrationEnabled,
                     onSelectTopic = { topic ->
+                        recordLastReading(topic.title, HomeQuickAction.HADITH)
                         selectedHadithTopicState.value = topic
                     }
                 )
@@ -575,11 +602,16 @@ fun AtharMuslimApp(
                 MainBottomTab.HOME -> {
                     HomeDashboardScreen(
                         favoritesCount = favoriteHadiths.size + favoriteQuranIds.size,
+                        lastReadingTitle = lastReadingTitle,
+                        lastReadingAction = lastReadingAction,
                         soundEnabled = soundEnabled,
                         hapticEnabled = vibrationEnabled,
                         onActionClick = { action ->
                             when (action) {
-                                HomeQuickAction.QURAN -> activeToolPageState.value = QuickToolPage.QURAN
+                                HomeQuickAction.QURAN -> {
+                                    recordLastReading("القرآن الكريم • فهرس السور", HomeQuickAction.QURAN)
+                                    activeToolPageState.value = QuickToolPage.QURAN
+                                }
                                 HomeQuickAction.AUDIO -> activeToolPageState.value = QuickToolPage.AUDIO
                                 HomeQuickAction.PRAYER -> activeToolPageState.value = QuickToolPage.PRAYER_GUIDE
                                 HomeQuickAction.FOLLOW_US -> {
@@ -589,12 +621,19 @@ fun AtharMuslimApp(
                                     }
                                     context.startActivity(Intent.createChooser(shareIntent, "مشاركة أثر مسلم"))
                                 }
-                                HomeQuickAction.HADITH -> hadithCategoriesOpenState.value = true
+                                HomeQuickAction.HADITH -> {
+                                    recordLastReading("الأحاديث • فئات الكتب الستة", HomeQuickAction.HADITH)
+                                    hadithCategoriesOpenState.value = true
+                                }
                                 HomeQuickAction.AZKAR -> {
+                                    recordLastReading("الأذكار اليومية", HomeQuickAction.AZKAR)
                                     selectedTabState.value = MainBottomTab.AZKAR
                                     selectedAzkarCategoryState.value = null
                                 }
-                                HomeQuickAction.DUA -> selectedTabState.value = MainBottomTab.DUA
+                                HomeQuickAction.DUA -> {
+                                    recordLastReading("الأدعية المختارة", HomeQuickAction.DUA)
+                                    selectedTabState.value = MainBottomTab.DUA
+                                }
                                 HomeQuickAction.TASBIH -> activeToolPageState.value = QuickToolPage.TASBIH
                                 HomeQuickAction.QIBLA -> activeToolPageState.value = QuickToolPage.QIBLA
                             }
@@ -610,7 +649,10 @@ fun AtharMuslimApp(
                             countsMap = countsMap,
                             soundEnabled = soundEnabled,
                             hapticEnabled = vibrationEnabled,
-                            onSelectCategory = { cat -> selectedAzkarCategoryState.value = cat }
+                            onSelectCategory = { cat ->
+                                recordLastReading(cat.title, HomeQuickAction.AZKAR)
+                                selectedAzkarCategoryState.value = cat
+                            }
                         )
                     } else {
                         ItemsCardsList(
