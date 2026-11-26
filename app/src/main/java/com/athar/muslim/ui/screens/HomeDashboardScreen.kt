@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -44,7 +43,7 @@ import com.athar.muslim.ui.screens.buttons.HomeQuickActionRegistry
 @Composable
 fun HomeDashboardScreen(
     favoritesCount: Int,
-    lastReadingTitle: String = "فهرس القرآن الكريم • سورة الفاتحة",
+    lastReadingTitle: String = "القرآن الكريم • فهرس السور الكامل",
     lastReadingAction: HomeQuickAction = HomeQuickAction.QURAN,
     soundEnabled: Boolean = true,
     hapticEnabled: Boolean = true,
@@ -58,23 +57,25 @@ fun HomeDashboardScreen(
     val rows = actions.chunked(3)
 
     fun triggerAction(action: HomeQuickAction) {
-        val isZikrBtn = action == HomeQuickAction.AZKAR ||
-            action == HomeQuickAction.DUA ||
-            action == HomeQuickAction.TASBIH
-        if (isZikrBtn) {
-            SoundHelper.playZikrPressSound(
-                enabled = soundEnabled,
-                isCompletion = false,
-                view = view,
-                hapticEnabled = hapticEnabled
-            )
-        } else {
-            SoundHelper.playSystemTouchSound(
-                context = context,
-                enabled = soundEnabled,
-                view = view,
-                hapticEnabled = hapticEnabled
-            )
+        runCatching {
+            val isZikrBtn = action == HomeQuickAction.AZKAR ||
+                action == HomeQuickAction.DUA ||
+                action == HomeQuickAction.TASBIH
+            if (isZikrBtn) {
+                SoundHelper.playZikrPressSound(
+                    enabled = soundEnabled,
+                    isCompletion = false,
+                    view = view,
+                    hapticEnabled = hapticEnabled
+                )
+            } else {
+                SoundHelper.playSystemTouchSound(
+                    context = context,
+                    enabled = soundEnabled,
+                    view = view,
+                    hapticEnabled = hapticEnabled
+                )
+            }
         }
         onActionClick(action)
     }
@@ -224,7 +225,6 @@ private fun QuickGridButton(
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(4.dp))
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = action.title,
