@@ -74,7 +74,7 @@ fun HomeDashboardScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "الخدمات السريعة",
+                            text = "الخدمات السريعة • Pro",
                             color = scheme.onSurface,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.ExtraBold
