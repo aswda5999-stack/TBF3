@@ -1,10 +1,8 @@
 package com.athar.muslim
 
-import android.Manifest
 import android.app.Activity
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -48,48 +46,49 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
+import com.athar.muslim.audio.VoiceAzkarPlayer
 import com.athar.muslim.data.AzkarRepository
 import com.athar.muslim.data.HadithRepository
 import com.athar.muslim.model.AzkarSubCategory
 import com.athar.muslim.model.HadithLoadResult
 import com.athar.muslim.model.HadithTopic
 import com.athar.muslim.model.MainBottomTab
+import com.athar.muslim.model.VoiceReminderIntensity
 import com.athar.muslim.model.ZikrItem
 import com.athar.muslim.notifications.AzkarReminderReceiver
+import com.athar.muslim.permissions.AppPermissionsManager
 import com.athar.muslim.ui.components.SkyBottomBar
 import com.athar.muslim.ui.components.SkyHeaderDecor
 import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.components.ZikrCard
 import com.athar.muslim.ui.screens.HomeDashboardScreen
-import com.athar.muslim.ui.screens.HomeQuickAction
 import com.athar.muslim.ui.screens.QuickToolPage
 import com.athar.muslim.ui.screens.QuickToolScreen
 import com.athar.muslim.ui.screens.SettingsScreen
+import com.athar.muslim.ui.screens.buttons.HomeQuickAction
 import com.athar.muslim.ui.theme.AppThemePreset
 import com.athar.muslim.ui.theme.AtharMuslimTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class PermissionStep {
+private enum class PermissionPromptStep {
     NONE,
-    NOTIFICATIONS,
+    RUNTIME_BUNDLE,
     EXACT_ALARM
 }
 
@@ -105,13 +104,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
             val prefs = remember { context.getSharedPreferences("athar_muslim_prefs", Context.MODE_PRIVATE) }
-            var selectedTheme by remember {
+            val themeState = remember {
                 mutableStateOf(
                     AppThemePreset.fromId(
                         prefs.getString("theme_preset", AppThemePreset.SKY_CLASSIC.id)
                     )
                 )
             }
+            val selectedTheme = themeState.value
 
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 AtharMuslimTheme(themePreset = selectedTheme) {
@@ -119,7 +119,7 @@ class MainActivity : ComponentActivity() {
                         prefs = prefs,
                         selectedTheme = selectedTheme,
                         onSelectTheme = { preset ->
-                            selectedTheme = preset
+                            themeState.value = preset
                             prefs.edit().putString("theme_preset", preset.id).apply()
                         }
                     )
@@ -137,21 +137,46 @@ fun AtharMuslimApp(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val view = LocalView.current
     val scheme = MaterialTheme.colorScheme
 
-    var soundEnabled by remember { mutableStateOf(prefs.getBoolean("sound_enabled", true)) }
-    var vibrationEnabled by remember { mutableStateOf(prefs.getBoolean("vibration_enabled", true)) }
-    var remindersEnabled by remember { mutableStateOf(prefs.getBoolean("reminders_enabled", true)) }
-    var fontScaleStep by remember { mutableIntStateOf(prefs.getInt("font_scale_step", 1)) }
+    val soundEnabledState = remember { mutableStateOf(prefs.getBoolean("sound_enabled", true)) }
+    val vibrationEnabledState = remember { mutableStateOf(prefs.getBoolean("vibration_enabled", true)) }
+    val remindersEnabledState = remember { mutableStateOf(prefs.getBoolean("reminders_enabled", true)) }
+    val voiceAzkarEnabledState = remember { mutableStateOf(prefs.getBoolean("voice_azkar_enabled", false)) }
+    val voiceIntensityState = remember {
+        mutableStateOf(
+            VoiceReminderIntensity.fromId(
+                prefs.getString("voice_intensity", VoiceReminderIntensity.MEDIUM.id)
+            )
+        )
+    }
+    val fontScaleStepState = remember { mutableIntStateOf(prefs.getInt("font_scale_step", 1)) }
 
-    var selectedTab by remember { mutableStateOf(MainBottomTab.HOME) }
-    var activeToolPage by remember { mutableStateOf<QuickToolPage?>(null) }
-    var selectedAzkarCategory by remember { mutableStateOf<AzkarSubCategory?>(null) }
-    var selectedHadithTopic by remember { mutableStateOf<HadithTopic?>(null) }
-    var hadithLoadState by remember { mutableStateOf<HadithLoadResult?>(null) }
-    var isLoadingHadith by remember { mutableStateOf(false) }
-    var retryNonce by remember { mutableIntStateOf(0) }
-    var showExitDialog by remember { mutableStateOf(false) }
+    val selectedTabState = remember { mutableStateOf(MainBottomTab.HOME) }
+    val activeToolPageState = remember { mutableStateOf<QuickToolPage?>(null) }
+    val selectedAzkarCategoryState = remember { mutableStateOf<AzkarSubCategory?>(null) }
+    val selectedHadithTopicState = remember { mutableStateOf<HadithTopic?>(null) }
+    val hadithLoadState = remember { mutableStateOf<HadithLoadResult?>(null) }
+    val isLoadingHadithState = remember { mutableStateOf(false) }
+    val retryNonceState = remember { mutableIntStateOf(0) }
+    val showExitDialogState = remember { mutableStateOf(false) }
+    val permissionStepState = remember { mutableStateOf(PermissionPromptStep.NONE) }
+
+    val soundEnabled = soundEnabledState.value
+    val vibrationEnabled = vibrationEnabledState.value
+    val remindersEnabled = remindersEnabledState.value
+    val voiceAzkarEnabled = voiceAzkarEnabledState.value
+    val voiceIntensity = voiceIntensityState.value
+    val fontScaleStep = fontScaleStepState.intValue
+    val selectedTab = selectedTabState.value
+    val activeToolPage = activeToolPageState.value
+    val selectedAzkarCategory = selectedAzkarCategoryState.value
+    val selectedHadithTopic = selectedHadithTopicState.value
+
+    val discoveredVoicesCount = remember {
+        VoiceAzkarPlayer.discoverRawVoiceResIds(context).size
+    }
 
     val favoriteHadiths = remember { mutableStateMapOf<Int, ZikrItem>() }
     val subCategories = AzkarSubCategory.entries
@@ -202,50 +227,49 @@ fun AtharMuslimApp(
         editor.apply()
     }
 
-    BackHandler(enabled = true) {
-        SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-        when {
-            showExitDialog -> showExitDialog = false
-            activeToolPage != null -> activeToolPage = null
-            selectedHadithTopic != null -> selectedHadithTopic = null
-            selectedTab == MainBottomTab.AZKAR && selectedAzkarCategory != null -> {
-                selectedAzkarCategory = null
-            }
-            selectedTab != MainBottomTab.HOME -> {
-                selectedAzkarCategory = null
-                selectedHadithTopic = null
-                activeToolPage = null
-                selectedTab = MainBottomTab.HOME
-            }
-            else -> {
-                showExitDialog = true
-            }
-        }
-    }
-
-    var permissionStep by remember { mutableStateOf(PermissionStep.NONE) }
-
     val exactAlarmLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         prefs.edit().putBoolean("exact_alarm_prompted", true).apply()
         AzkarReminderReceiver.scheduleAllDailyReminders(context)
-        permissionStep = PermissionStep.NONE
+        permissionStepState.value = PermissionPromptStep.NONE
     }
 
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
+    val multiPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
-        prefs.edit().putBoolean("notif_permission_prompted", true).apply()
+        prefs.edit().putBoolean("runtime_perms_prompted", true).apply()
         AzkarReminderReceiver.ensureNotificationChannel(context)
         AzkarReminderReceiver.scheduleAllDailyReminders(context)
-
         if (!AzkarReminderReceiver.canScheduleExactAlarms(context) &&
             !prefs.getBoolean("exact_alarm_prompted", false)
         ) {
-            permissionStep = PermissionStep.EXACT_ALARM
+            permissionStepState.value = PermissionPromptStep.EXACT_ALARM
         } else {
-            permissionStep = PermissionStep.NONE
+            permissionStepState.value = PermissionPromptStep.NONE
+        }
+    }
+
+    fun triggerPermissionsRequest() {
+        multiPermissionLauncher.launch(AppPermissionsManager.requiredRuntimePermissions())
+    }
+
+    BackHandler(enabled = true) {
+        SoundHelper.playSystemTouchSound(context, soundEnabled, view, vibrationEnabled)
+        when {
+            showExitDialogState.value -> showExitDialogState.value = false
+            activeToolPage != null -> activeToolPageState.value = null
+            selectedHadithTopic != null -> selectedHadithTopicState.value = null
+            selectedTab == MainBottomTab.AZKAR && selectedAzkarCategory != null -> {
+                selectedAzkarCategoryState.value = null
+            }
+            selectedTab != MainBottomTab.HOME -> {
+                selectedAzkarCategoryState.value = null
+                selectedHadithTopicState.value = null
+                activeToolPageState.value = null
+                selectedTabState.value = MainBottomTab.HOME
+            }
+            else -> showExitDialogState.value = true
         }
     }
 
@@ -253,23 +277,22 @@ fun AtharMuslimApp(
         syncDailyCounts()
         AzkarReminderReceiver.scheduleAllDailyReminders(context)
 
-        val needsNotifRuntime = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-
-        if (needsNotifRuntime && !prefs.getBoolean("notif_permission_prompted", false)) {
-            permissionStep = PermissionStep.NOTIFICATIONS
+        if (!AppPermissionsManager.hasAllRequiredRuntimePermissions(context) &&
+            !prefs.getBoolean("runtime_perms_prompted", false)
+        ) {
+            permissionStepState.value = PermissionPromptStep.RUNTIME_BUNDLE
         } else if (!AzkarReminderReceiver.canScheduleExactAlarms(context) &&
             !prefs.getBoolean("exact_alarm_prompted", false)
         ) {
-            permissionStep = PermissionStep.EXACT_ALARM
+            permissionStepState.value = PermissionPromptStep.EXACT_ALARM
         }
     }
 
-    LaunchedEffect(selectedHadithTopic, retryNonce) {
+    LaunchedEffect(selectedHadithTopic, retryNonceState.intValue) {
         val topic = selectedHadithTopic
         if (topic != null && !topic.isFavorites) {
-            isLoadingHadith = true
-            hadithLoadState = null
+            isLoadingHadithState.value = true
+            hadithLoadState.value = null
             val res = HadithRepository.loadTopicHadiths(topic)
             if (res is HadithLoadResult.Success) {
                 res.items.forEach { entry ->
@@ -278,14 +301,14 @@ fun AtharMuslimApp(
                     }
                 }
             }
-            hadithLoadState = res
-            isLoadingHadith = false
+            hadithLoadState.value = res
+            isLoadingHadithState.value = false
         }
     }
 
-    if (showExitDialog) {
+    if (showExitDialogState.value) {
         AlertDialog(
-            onDismissRequest = { showExitDialog = false },
+            onDismissRequest = { showExitDialogState.value = false },
             containerColor = scheme.surface,
             shape = RoundedCornerShape(22.dp),
             title = {
@@ -307,8 +330,8 @@ fun AtharMuslimApp(
             confirmButton = {
                 Button(
                     onClick = {
-                        SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                        showExitDialog = false
+                        SoundHelper.playSystemTouchSound(context, soundEnabled, view, vibrationEnabled)
+                        showExitDialogState.value = false
                         activity?.finishAffinity()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = scheme.primary)
@@ -317,64 +340,53 @@ fun AtharMuslimApp(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showExitDialog = false }) {
+                TextButton(onClick = { showExitDialogState.value = false }) {
                     Text("البقاء", color = scheme.onSurface, fontWeight = FontWeight.Bold)
                 }
             }
         )
     }
 
-    if (permissionStep == PermissionStep.NOTIFICATIONS) {
+    if (permissionStepState.value == PermissionPromptStep.RUNTIME_BUNDLE) {
         AlertDialog(
             onDismissRequest = {
-                prefs.edit().putBoolean("notif_permission_prompted", true).apply()
-                permissionStep = if (!AzkarReminderReceiver.canScheduleExactAlarms(context)) {
-                    PermissionStep.EXACT_ALARM
-                } else {
-                    PermissionStep.NONE
-                }
+                prefs.edit().putBoolean("runtime_perms_prompted", true).apply()
+                permissionStepState.value = PermissionPromptStep.NONE
             },
             containerColor = scheme.surface,
             shape = RoundedCornerShape(22.dp),
             title = {
                 Text(
-                    text = "إذن إشعارات الأذكار",
+                    text = "أذونات التطبيق الأساسية",
                     color = scheme.onSurface,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 18.sp
+                    fontSize = 17.sp
                 )
             },
             text = {
                 Text(
-                    text = "اسمح للتطبيق بإرسال إشعارات أذكار الصباح والمساء والنوم لتصلك في مواعيدها.",
+                    text = "يطلب التطبيق إذن الموقع بدقة والصوت والتخزين والإشعارات لتشغيل البوصلة والأذكار الصوتية والتنبيهات بسلاسة.",
                     color = scheme.onBackground,
-                    fontSize = 14.sp,
-                    lineHeight = 22.sp
+                    fontSize = 13.sp,
+                    lineHeight = 21.sp
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            permissionStep = PermissionStep.EXACT_ALARM
-                        }
+                        permissionStepState.value = PermissionPromptStep.NONE
+                        triggerPermissionsRequest()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = scheme.primary)
                 ) {
-                    Text("منح الإذن", color = scheme.onPrimary, fontWeight = FontWeight.Bold)
+                    Text("منح الأذونات", color = scheme.onPrimary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = {
-                        prefs.edit().putBoolean("notif_permission_prompted", true).apply()
-                        permissionStep = if (!AzkarReminderReceiver.canScheduleExactAlarms(context)) {
-                            PermissionStep.EXACT_ALARM
-                        } else {
-                            PermissionStep.NONE
-                        }
+                        prefs.edit().putBoolean("runtime_perms_prompted", true).apply()
+                        permissionStepState.value = PermissionPromptStep.NONE
                     }
                 ) {
                     Text("لاحقاً", color = scheme.onSurface)
@@ -383,11 +395,11 @@ fun AtharMuslimApp(
         )
     }
 
-    if (permissionStep == PermissionStep.EXACT_ALARM) {
+    if (permissionStepState.value == PermissionPromptStep.EXACT_ALARM) {
         AlertDialog(
             onDismissRequest = {
                 prefs.edit().putBoolean("exact_alarm_prompted", true).apply()
-                permissionStep = PermissionStep.NONE
+                permissionStepState.value = PermissionPromptStep.NONE
             },
             containerColor = scheme.surface,
             shape = RoundedCornerShape(22.dp),
@@ -396,15 +408,15 @@ fun AtharMuslimApp(
                     text = "إذن التنبيه في الموعد المحدد",
                     color = scheme.onSurface,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 18.sp
+                    fontSize = 17.sp
                 )
             },
             text = {
                 Text(
-                    text = "لتصل إشعارات الأذكار بدقة في وقتها اليومي، فعّل خيار المنبهات والتذكيرات من الإعدادات.",
+                    text = "لتعمل الأذكار الصوتية والإشعارات بدقة حتى عند إغلاق الشاشة، يُنصح بتفعيل إذن المنبهات الدقيقة.",
                     color = scheme.onBackground,
-                    fontSize = 14.sp,
-                    lineHeight = 22.sp
+                    fontSize = 13.sp,
+                    lineHeight = 21.sp
                 )
             },
             confirmButton = {
@@ -415,7 +427,7 @@ fun AtharMuslimApp(
                             exactAlarmLauncher.launch(settingsIntent)
                         } else {
                             AzkarReminderReceiver.scheduleAllDailyReminders(context)
-                            permissionStep = PermissionStep.NONE
+                            permissionStepState.value = PermissionPromptStep.NONE
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = scheme.primary)
@@ -427,7 +439,7 @@ fun AtharMuslimApp(
                 TextButton(
                     onClick = {
                         prefs.edit().putBoolean("exact_alarm_prompted", true).apply()
-                        permissionStep = PermissionStep.NONE
+                        permissionStepState.value = PermissionPromptStep.NONE
                     }
                 ) {
                     Text("تخطي", color = scheme.onSurface)
@@ -467,7 +479,8 @@ fun AtharMuslimApp(
                 subtitleBadge = subtitleBadgeText,
                 showBannerCarousel = isHomeDashboard,
                 autoSlideEnabled = isHomeDashboard,
-                soundEnabled = soundEnabled
+                soundEnabled = soundEnabled,
+                hapticEnabled = vibrationEnabled
             )
         },
         bottomBar = {
@@ -475,11 +488,11 @@ fun AtharMuslimApp(
                 selectedTab = selectedTab,
                 soundEnabled = soundEnabled,
                 onTabSelected = { tab ->
-                    selectedTab = tab
-                    activeToolPage = null
-                    selectedHadithTopic = null
+                    selectedTabState.value = tab
+                    activeToolPageState.value = null
+                    selectedHadithTopicState.value = null
                     if (tab != MainBottomTab.AZKAR) {
-                        selectedAzkarCategory = null
+                        selectedAzkarCategoryState.value = null
                     }
                 }
             )
@@ -494,12 +507,13 @@ fun AtharMuslimApp(
         ) {
             if (activeToolPage != null) {
                 QuickToolScreen(
-                    page = activeToolPage!!,
+                    page = activeToolPage,
                     soundEnabled = soundEnabled,
+                    hapticEnabled = vibrationEnabled,
                     onOpenMorningAzkar = {
-                        activeToolPage = null
-                        selectedTab = MainBottomTab.AZKAR
-                        selectedAzkarCategory = AzkarSubCategory.MORNING
+                        activeToolPageState.value = null
+                        selectedTabState.value = MainBottomTab.AZKAR
+                        selectedAzkarCategoryState.value = AzkarSubCategory.MORNING
                     }
                 )
                 return@Box
@@ -507,15 +521,15 @@ fun AtharMuslimApp(
 
             if (selectedHadithTopic != null) {
                 HadithTopicDetailScreen(
-                    topic = selectedHadithTopic!!,
-                    isLoading = isLoadingHadith,
-                    loadResult = hadithLoadState,
+                    topic = selectedHadithTopic,
+                    isLoading = isLoadingHadithState.value,
+                    loadResult = hadithLoadState.value,
                     favoriteMap = favoriteHadiths,
                     countsMap = countsMap,
                     soundEnabled = soundEnabled,
                     vibrationEnabled = vibrationEnabled,
                     fontScaleStep = fontScaleStep,
-                    onRetry = { retryNonce++ },
+                    onRetry = { retryNonceState.intValue++ },
                     onToggleFavorite = { hadithItem ->
                         if (favoriteHadiths.containsKey(hadithItem.id)) {
                             favoriteHadiths.remove(hadithItem.id)
@@ -533,19 +547,27 @@ fun AtharMuslimApp(
                     HomeDashboardScreen(
                         favoritesCount = favoriteHadiths.size,
                         soundEnabled = soundEnabled,
+                        hapticEnabled = vibrationEnabled,
                         onActionClick = { action ->
                             when (action) {
-                                HomeQuickAction.HADITH -> selectedHadithTopic = HadithTopic.BUKHARI
-                                HomeQuickAction.AZKAR -> {
-                                    selectedTab = MainBottomTab.AZKAR
-                                    selectedAzkarCategory = null
+                                HomeQuickAction.QURAN -> activeToolPageState.value = QuickToolPage.QURAN
+                                HomeQuickAction.AUDIO -> activeToolPageState.value = QuickToolPage.AUDIO
+                                HomeQuickAction.PRAYER -> activeToolPageState.value = QuickToolPage.PRAYER_GUIDE
+                                HomeQuickAction.FOLLOW_US -> {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, "تطبيق أثر مسلم — للأذكار والأدعية والأحاديث النبوية.")
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "مشاركة أثر مسلم"))
                                 }
-                                HomeQuickAction.DUA -> selectedTab = MainBottomTab.DUA
-                                HomeQuickAction.FAVORITES -> selectedHadithTopic = HadithTopic.FAVORITES
-                                HomeQuickAction.TASBIH -> activeToolPage = QuickToolPage.TASBIH
-                                HomeQuickAction.QIBLA -> activeToolPage = QuickToolPage.QIBLA
-                                HomeQuickAction.PRAYER_GUIDE -> activeToolPage = QuickToolPage.PRAYER_GUIDE
-                                HomeQuickAction.MORNING_FOCUS -> activeToolPage = QuickToolPage.MORNING_FOCUS
+                                HomeQuickAction.HADITH -> selectedHadithTopicState.value = HadithTopic.BUKHARI
+                                HomeQuickAction.AZKAR -> {
+                                    selectedTabState.value = MainBottomTab.AZKAR
+                                    selectedAzkarCategoryState.value = null
+                                }
+                                HomeQuickAction.DUA -> selectedTabState.value = MainBottomTab.DUA
+                                HomeQuickAction.TASBIH -> activeToolPageState.value = QuickToolPage.TASBIH
+                                HomeQuickAction.QIBLA -> activeToolPageState.value = QuickToolPage.QIBLA
                             }
                         }
                     )
@@ -558,7 +580,8 @@ fun AtharMuslimApp(
                             categories = subCategories,
                             countsMap = countsMap,
                             soundEnabled = soundEnabled,
-                            onSelectCategory = { cat -> selectedAzkarCategory = cat }
+                            hapticEnabled = vibrationEnabled,
+                            onSelectCategory = { cat -> selectedAzkarCategoryState.value = cat }
                         )
                     } else {
                         ItemsCardsList(
@@ -589,9 +612,29 @@ fun AtharMuslimApp(
                     SettingsScreen(
                         selectedTheme = selectedTheme,
                         onSelectTheme = onSelectTheme,
+                        voiceAzkarEnabled = voiceAzkarEnabled,
+                        onToggleVoiceAzkar = { checked ->
+                            voiceAzkarEnabledState.value = checked
+                            prefs.edit().putBoolean("voice_azkar_enabled", checked).apply()
+                            if (checked) {
+                                AzkarReminderReceiver.scheduleVoiceReminderLoop(context, voiceIntensity)
+                                VoiceAzkarPlayer.playNextVoiceReminder(context, voiceIntensity)
+                            } else {
+                                AzkarReminderReceiver.cancelVoiceReminderLoop(context)
+                            }
+                        },
+                        voiceIntensity = voiceIntensity,
+                        onSelectVoiceIntensity = { level ->
+                            voiceIntensityState.value = level
+                            prefs.edit().putString("voice_intensity", level.id).apply()
+                            if (voiceAzkarEnabled) {
+                                AzkarReminderReceiver.scheduleVoiceReminderLoop(context, level)
+                            }
+                        },
+                        discoveredVoicesCount = discoveredVoicesCount,
                         remindersEnabled = remindersEnabled,
                         onToggleReminders = { checked ->
-                            remindersEnabled = checked
+                            remindersEnabledState.value = checked
                             prefs.edit().putBoolean("reminders_enabled", checked).apply()
                             if (checked) {
                                 AzkarReminderReceiver.scheduleAllDailyReminders(context)
@@ -599,21 +642,22 @@ fun AtharMuslimApp(
                         },
                         soundEnabled = soundEnabled,
                         onToggleSound = { checked ->
-                            soundEnabled = checked
+                            soundEnabledState.value = checked
                             prefs.edit().putBoolean("sound_enabled", checked).apply()
                         },
                         vibrationEnabled = vibrationEnabled,
                         onToggleVibration = { checked ->
-                            vibrationEnabled = checked
+                            vibrationEnabledState.value = checked
                             prefs.edit().putBoolean("vibration_enabled", checked).apply()
                         },
                         fontScaleStep = fontScaleStep,
                         onChangeFontScale = { step ->
-                            fontScaleStep = step
+                            fontScaleStepState.intValue = step
                             prefs.edit().putInt("font_scale_step", step).apply()
                         },
                         onResetAllCounts = { resetAllCountsToDefault() },
-                        onBackToHome = { selectedTab = MainBottomTab.HOME }
+                        onRequestPermissions = { triggerPermissionsRequest() },
+                        onBackToHome = { selectedTabState.value = MainBottomTab.HOME }
                     )
                 }
             }
@@ -626,9 +670,11 @@ private fun AzkarCategoriesVerticalList(
     categories: List<AzkarSubCategory>,
     countsMap: Map<Int, Int>,
     soundEnabled: Boolean,
+    hapticEnabled: Boolean,
     onSelectCategory: (AzkarSubCategory) -> Unit
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val scheme = MaterialTheme.colorScheme
 
     LazyColumn(
@@ -648,7 +694,12 @@ private fun AzkarCategoriesVerticalList(
 
             Card(
                 onClick = {
-                    SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                    SoundHelper.playZikrPressSound(
+                        enabled = soundEnabled,
+                        isCompletion = false,
+                        view = view,
+                        hapticEnabled = hapticEnabled
+                    )
                     onSelectCategory(category)
                 },
                 shape = RoundedCornerShape(18.dp),
@@ -761,6 +812,8 @@ private fun HadithTopicDetailScreen(
     onToggleFavorite: (ZikrItem) -> Unit,
     onSaveCount: (Int, Int) -> Unit
 ) {
+    val context = LocalContext.current
+    val view = LocalView.current
     val scheme = MaterialTheme.colorScheme
     Column(modifier = Modifier.fillMaxSize()) {
         if (topic.isFavorites) {
@@ -899,7 +952,12 @@ private fun HadithTopicDetailScreen(
                             )
                             Button(
                                 onClick = {
-                                    SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                                    SoundHelper.playSystemTouchSound(
+                                        context = context,
+                                        enabled = soundEnabled,
+                                        view = view,
+                                        hapticEnabled = vibrationEnabled
+                                    )
                                     onRetry()
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = scheme.primary)
