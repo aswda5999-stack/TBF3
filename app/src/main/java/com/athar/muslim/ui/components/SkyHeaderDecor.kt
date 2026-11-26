@@ -31,10 +31,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,7 +47,9 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -98,17 +98,22 @@ fun SkyHeaderDecor(
     showBannerCarousel: Boolean = false,
     autoSlideEnabled: Boolean = true,
     soundEnabled: Boolean = true,
+    hapticEnabled: Boolean = true,
+    brandTitleFontFamily: FontFamily = FontFamily.Serif,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val view = LocalView.current
     val slides = remember { getTenIslamicSlides() }
-    var activeIndex by remember { mutableIntStateOf(0) }
+    val indexState = remember { mutableIntStateOf(0) }
+    val activeIndex = indexState.intValue
 
     LaunchedEffect(showBannerCarousel, autoSlideEnabled, slides.size) {
         if (!showBannerCarousel || !autoSlideEnabled || slides.size <= 1) return@LaunchedEffect
         while (true) {
             delay(5000L)
-            activeIndex = (activeIndex + 1) % slides.size
+            indexState.intValue = (indexState.intValue + 1) % slides.size
         }
     }
 
@@ -133,7 +138,8 @@ fun SkyHeaderDecor(
                 Text(
                     text = title,
                     color = scheme.onSurface,
-                    fontSize = 18.sp,
+                    fontFamily = brandTitleFontFamily,
+                    fontSize = 19.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -170,8 +176,13 @@ fun SkyHeaderDecor(
                     IslamicArtworkBanner(
                         slide = slide,
                         onClick = {
-                            SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                            activeIndex = (activeIndex + 1) % slides.size
+                            SoundHelper.playSystemTouchSound(
+                                context = context,
+                                enabled = soundEnabled,
+                                view = view,
+                                hapticEnabled = hapticEnabled
+                            )
+                            indexState.intValue = (indexState.intValue + 1) % slides.size
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -190,16 +201,16 @@ fun SkyHeaderDecor(
                 ) {
                     slides.forEachIndexed { index, _ ->
                         val isSelected = index == activeIndex
-                        val dotWidth by animateDpAsState(
+                        val dotWidth = animateDpAsState(
                             targetValue = if (isSelected) 22.dp else 7.dp,
                             animationSpec = tween(250),
                             label = "dot_width"
-                        )
-                        val dotColor by animateColorAsState(
+                        ).value
+                        val dotColor = animateColorAsState(
                             targetValue = if (isSelected) scheme.primary else scheme.outlineVariant,
                             animationSpec = tween(250),
                             label = "dot_color"
-                        )
+                        ).value
 
                         Box(
                             modifier = Modifier
@@ -209,8 +220,13 @@ fun SkyHeaderDecor(
                                 .clip(CircleShape)
                                 .background(dotColor)
                                 .clickable {
-                                    SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                    activeIndex = index
+                                    SoundHelper.playSystemTouchSound(
+                                        context = context,
+                                        enabled = soundEnabled,
+                                        view = view,
+                                        hapticEnabled = hapticEnabled
+                                    )
+                                    indexState.intValue = index
                                 }
                         )
                     }
