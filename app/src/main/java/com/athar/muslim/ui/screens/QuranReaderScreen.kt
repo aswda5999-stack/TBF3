@@ -9,17 +9,15 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -55,8 +53,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -100,7 +100,7 @@ fun QuranReaderScreen(
         try {
             val resId = context.resources.getIdentifier("quran_font", "font", context.packageName)
             if (resId != 0) {
-                FontFamily(androidx.compose.ui.text.font.Font(resId))
+                FontFamily(Font(resId))
             } else {
                 FontFamily.Serif
             }
@@ -126,7 +126,7 @@ fun QuranReaderScreen(
         }
         while (true) {
             val stepDelayMs = (95L - (scrollSpeed * 7.5f).toLong()).coerceIn(18L, 95L)
-            val stepPx = (1.5f + scrollSpeed * 0.65f)
+            val stepPx = 1.5f + scrollSpeed * 0.65f
             delay(stepDelayMs)
             listState.dispatchRawDelta(stepPx)
         }
@@ -145,7 +145,6 @@ fun QuranReaderScreen(
             .background(pageBg)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // شريط علوي خاص بصفحة القرآن: قمر/شمس من جانب، وثلاث شخطات من الجانب الآخر
             Surface(
                 color = cardBg,
                 shadowElevation = 2.dp,
@@ -245,20 +244,22 @@ fun QuranReaderScreen(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .combinedClickable(
-                                onClick = {
-                                    SoundHelper.playSystemTouchSound(context, soundEnabled, view, hapticEnabled)
-                                },
-                                onLongClick = {
-                                    SoundHelper.playZikrPressSound(
-                                        enabled = soundEnabled,
-                                        isCompletion = false,
-                                        view = view,
-                                        hapticEnabled = hapticEnabled
-                                    )
-                                    selectedMenuAyahState.value = ayah
-                                }
-                            )
+                            .pointerInput(ayah.id) {
+                                detectTapGestures(
+                                    onTap = {
+                                        SoundHelper.playSystemTouchSound(context, soundEnabled, view, hapticEnabled)
+                                    },
+                                    onLongPress = {
+                                        SoundHelper.playZikrPressSound(
+                                            enabled = soundEnabled,
+                                            isCompletion = false,
+                                            view = view,
+                                            hapticEnabled = hapticEnabled
+                                        )
+                                        selectedMenuAyahState.value = ayah
+                                    }
+                                )
+                            }
                     ) {
                         Column(
                             modifier = Modifier
@@ -307,7 +308,6 @@ fun QuranReaderScreen(
             }
         }
 
-        // شريط جانبي للتحكم بسرعة رفع النص / الصفحة تلقائياً
         AnimatedVisibility(
             visible = isDrawerOpen,
             enter = slideInHorizontally(initialOffsetX = { it }),
@@ -407,7 +407,6 @@ fun QuranReaderScreen(
             }
         }
 
-        // قائمة الخيارات عند الضغط المطول على آية محددة
         if (selectedMenuAyah != null) {
             val menuAyah = selectedMenuAyah
             val isAlreadyFav = favoriteIds.contains(menuAyah.id)
@@ -503,7 +502,6 @@ fun QuranReaderScreen(
             )
         }
 
-        // نافذة التفسير الجديدة: الآية من فوق وتحتها التفسير الميسر بدون ذكر المصدر
         if (tafsirDialogAyah != null) {
             val currentTafsirAyah = tafsirDialogAyah
             Dialog(onDismissRequest = { tafsirDialogAyahState.value = null }) {
@@ -576,7 +574,6 @@ fun QuranReaderScreen(
             }
         }
 
-        // تنبيه "قيد التطوير" عند الضغط على خيار قراءة
         if (isUnderDev) {
             AlertDialog(
                 onDismissRequest = { underDevDialogState.value = false },
