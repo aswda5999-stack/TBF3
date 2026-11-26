@@ -1,44 +1,82 @@
 package com.athar.muslim.ui.components
 
+import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.Handler
 import android.os.Looper
+import android.view.HapticFeedbackConstants
+import android.view.View
 
 object SoundHelper {
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var toneGenerator: ToneGenerator? = null
+    private var zikrToneGenerator: ToneGenerator? = null
 
-    private fun getGenerator(): ToneGenerator? {
-        if (toneGenerator != null) return toneGenerator
+    private fun getZikrToneGenerator(): ToneGenerator? {
+        if (zikrToneGenerator != null) return zikrToneGenerator
         return try {
-            ToneGenerator(AudioManager.STREAM_MUSIC, 80).also {
-                toneGenerator = it
+            ToneGenerator(AudioManager.STREAM_MUSIC, 85).also {
+                zikrToneGenerator = it
             }
         } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun playSystemTouchSound(
+        context: Context,
+        enabled: Boolean,
+        view: View? = null,
+        hapticEnabled: Boolean = false
+    ) {
+        if (hapticEnabled && view != null) {
             try {
-                ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80).also {
-                    toneGenerator = it
+                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            } catch (_: Exception) {
+            }
+        }
+        if (!enabled) return
+        mainHandler.post {
+            try {
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                audioManager?.playSoundEffect(AudioManager.FX_KEY_CLICK, -1f)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun playZikrPressSound(
+        enabled: Boolean,
+        isCompletion: Boolean = false,
+        view: View? = null,
+        hapticEnabled: Boolean = false
+    ) {
+        if (hapticEnabled && view != null) {
+            try {
+                val feedback = if (isCompletion) {
+                    HapticFeedbackConstants.CONFIRM
+                } else {
+                    HapticFeedbackConstants.CONTEXT_CLICK
+                }
+                view.performHapticFeedback(feedback)
+            } catch (_: Exception) {
+            }
+        }
+        if (!enabled) return
+        mainHandler.post {
+            val gen = getZikrToneGenerator() ?: return@post
+            try {
+                if (isCompletion) {
+                    gen.startTone(ToneGenerator.TONE_PROP_PROMPT, 140)
+                } else {
+                    gen.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 65)
                 }
             } catch (_: Exception) {
-                null
             }
         }
     }
 
     fun playTapSound(enabled: Boolean, isCompletion: Boolean = false) {
-        if (!enabled) return
-        mainHandler.post {
-            val gen = getGenerator() ?: return@post
-            try {
-                if (isCompletion) {
-                    gen.startTone(ToneGenerator.TONE_PROP_ACK, 120)
-                } else {
-                    gen.startTone(ToneGenerator.TONE_PROP_BEEP, 55)
-                }
-            } catch (_: Exception) {
-                // تجاهل أي خطأ صوتي مؤقت على الجهاز
-            }
-        }
+        playZikrPressSound(enabled = enabled, isCompletion = isCompletion)
     }
 }
