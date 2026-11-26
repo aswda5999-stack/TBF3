@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.LightMode
@@ -48,6 +49,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -65,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.athar.muslim.data.KingFahadQuranRepository
 import com.athar.muslim.model.QuranAyah
+import com.athar.muslim.model.QuranSurahMeta
 import com.athar.muslim.ui.components.SoundHelper
 import kotlinx.coroutines.delay
 
@@ -83,6 +86,8 @@ fun QuranReaderScreen(
     val quranNightModeState = remember { mutableStateOf(false) }
     val drawerOpenState = remember { mutableStateOf(false) }
     val scrollSpeedState = remember { mutableFloatStateOf(0f) }
+    val activeSurahNumberState = remember { mutableIntStateOf(0) }
+    val targetAyahNumberState = remember { mutableIntStateOf(1) }
     val selectedMenuAyahState = remember { mutableStateOf<QuranAyah?>(null) }
     val tafsirDialogAyahState = remember { mutableStateOf<QuranAyah?>(null) }
     val underDevDialogState = remember { mutableStateOf(false) }
@@ -91,6 +96,8 @@ fun QuranReaderScreen(
     val isNightMode = quranNightModeState.value
     val isDrawerOpen = drawerOpenState.value
     val scrollSpeed = scrollSpeedState.floatValue
+    val activeSurahNumber = activeSurahNumberState.intValue
+    val targetAyahNumber = targetAyahNumberState.intValue
     val selectedMenuAyah = selectedMenuAyahState.value
     val tafsirDialogAyah = tafsirDialogAyahState.value
     val isUnderDev = underDevDialogState.value
@@ -109,7 +116,14 @@ fun QuranReaderScreen(
         }
     }
 
-    val ayahs = remember { KingFahadQuranRepository.getSampleSurahAyahs() }
+    val surahIndex = remember { KingFahadQuranRepository.getFullSurahIndex() }
+    val surahAyahs = remember(activeSurahNumber) {
+        if (activeSurahNumber > 0) {
+            KingFahadQuranRepository.getAyahsForSurah(activeSurahNumber)
+        } else {
+            emptyList()
+        }
+    }
     val listState = rememberLazyListState()
 
     val pageBg = if (isNightMode) Color(0xFF0B1420) else scheme.background
@@ -120,8 +134,21 @@ fun QuranReaderScreen(
     val accentCol = if (isNightMode) Color(0xFF64B5F6) else scheme.primary
     val badgeBg = if (isNightMode) Color(0xFF1B314C) else scheme.primaryContainer
 
-    LaunchedEffect(scrollSpeed, isDrawerOpen, tafsirDialogAyah, selectedMenuAyah) {
-        if (scrollSpeed <= 0.1f || isDrawerOpen || tafsirDialogAyah != null || selectedMenuAyah != null) {
+    LaunchedEffect(activeSurahNumber, targetAyahNumber, surahAyahs.size) {
+        if (activeSurahNumber > 0 && surahAyahs.isNotEmpty()) {
+            val idx = (targetAyahNumber - 1).coerceIn(0, surahAyahs.lastIndex)
+            listState.scrollToItem(idx)
+        }
+    }
+
+    LaunchedEffect(scrollSpeed, isDrawerOpen, tafsirDialogAyah, selectedMenuAyah, activeSurahNumber) {
+        if (
+            activeSurahNumber <= 0 ||
+            scrollSpeed <= 0.1f ||
+            isDrawerOpen ||
+            tafsirDialogAyah != null ||
+            selectedMenuAyah != null
+        ) {
             return@LaunchedEffect
         }
         while (true) {
@@ -145,9 +172,11 @@ fun QuranReaderScreen(
             .background(pageBg)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // الشريط العلوي الخاص بصفحة القرآن: شمس/قمر من جانب وثلاث شخطات من الجانب الآخر
             Surface(
                 color = cardBg,
-                shadowElevation = 2.dp,
+                shadowElevation = 3.dp,
+                shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -157,29 +186,51 @@ fun QuranReaderScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    IconButton(
-                        onClick = {
-                            SoundHelper.playSystemTouchSound(context, soundEnabled, view, hapticEnabled)
-                            quranNightModeState.value = !isNightMode
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                SoundHelper.playSystemTouchSound(context, soundEnabled, view, hapticEnabled)
+                                quranNightModeState.value = !isNightMode
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (isNightMode) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
+                                contentDescription = "الوضع الليلي",
+                                tint = accentCol,
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = if (isNightMode) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
-                            contentDescription = "الوضع الليلي",
-                            tint = accentCol,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        if (activeSurahNumber > 0) {
+                            IconButton(
+                                onClick = {
+                                    SoundHelper.playSystemTouchSound(context, soundEnabled, view, hapticEnabled)
+                                    scrollSpeedState.value = 0f
+                                    activeSurahNumberState.value = 0
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                    contentDescription = "الفهرس",
+                                    tint = accentCol,
+                                    modifier = Modifier.size(21.dp)
+                                )
+                            }
+                        }
                     }
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val currentSurahTitle = surahIndex.firstOrNull { it.number == activeSurahNumber }?.name
+                            ?: "فهرس القرآن الكريم"
                         Text(
-                            text = "القرآن الكريم",
+                            text = currentSurahTitle,
                             color = primaryText,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
-                            text = if (scrollSpeed > 0.1f) {
+                            text = if (activeSurahNumber <= 0) {
+                                "114 سورة • اختر سورة أو آية لجلبها"
+                            } else if (scrollSpeed > 0.1f) {
                                 "تمرير تلقائي • سرعة ${scrollSpeed.toInt()}"
                             } else {
                                 "تنقل بالسحب • اضغط مطولاً على آية"
@@ -208,7 +259,7 @@ fun QuranReaderScreen(
             if (toastMessage != null) {
                 Surface(
                     color = badgeBg,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -224,90 +275,124 @@ fun QuranReaderScreen(
                 }
             }
 
-            LazyColumn(
-                state = listState,
-                userScrollEnabled = true,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(top = 10.dp, bottom = 20.dp)
-            ) {
-                items(ayahs, key = { it.id }) { ayah ->
-                    val isFav = favoriteIds.contains(ayah.id)
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = cardBg),
-                        border = BorderStroke(
-                            width = if (isFav) 1.5.dp else 1.dp,
-                            color = if (isFav) accentCol else borderCol
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .pointerInput(ayah.id) {
-                                detectTapGestures(
-                                    onTap = {
-                                        SoundHelper.playSystemTouchSound(context, soundEnabled, view, hapticEnabled)
-                                    },
-                                    onLongPress = {
-                                        SoundHelper.playZikrPressSound(
-                                            enabled = soundEnabled,
-                                            isCompletion = false,
-                                            view = view,
-                                            hapticEnabled = hapticEnabled
-                                        )
-                                        selectedMenuAyahState.value = ayah
-                                    }
+            if (activeSurahNumber <= 0) {
+                LazyColumn(
+                    userScrollEnabled = true,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 22.dp)
+                ) {
+                    items(surahIndex, key = { it.number }) { surah ->
+                        SurahIndexRowCard(
+                            surah = surah,
+                            cardBg = cardBg,
+                            borderCol = borderCol,
+                            primaryText = primaryText,
+                            secondaryText = secondaryText,
+                            accentCol = accentCol,
+                            badgeBg = badgeBg,
+                            onSelectSurah = { selectedSurahNumber, selectedAyahNum ->
+                                SoundHelper.playZikrPressSound(
+                                    enabled = soundEnabled,
+                                    isCompletion = false,
+                                    view = view,
+                                    hapticEnabled = hapticEnabled
                                 )
+                                activeSurahNumberState.value = selectedSurahNumber
+                                targetAyahNumberState.value = selectedAyahNum
                             }
-                    ) {
-                        Column(
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    state = listState,
+                    userScrollEnabled = true,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 22.dp)
+                ) {
+                    items(surahAyahs, key = { it.id }) { ayah ->
+                        val isFav = favoriteIds.contains(ayah.id)
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = cardBg),
+                            border = BorderStroke(
+                                width = if (isFav) 1.6.dp else 1.dp,
+                                color = if (isFav) accentCol else borderCol
+                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = ayah.surahName,
-                                    color = accentCol,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Surface(
-                                    shape = CircleShape,
-                                    color = badgeBg
-                                ) {
-                                    Text(
-                                        text = "${ayah.ayahNumber}",
-                                        color = primaryText,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                                .pointerInput(ayah.id) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            SoundHelper.playSystemTouchSound(context, soundEnabled, view, hapticEnabled)
+                                        },
+                                        onLongPress = {
+                                            SoundHelper.playZikrPressSound(
+                                                enabled = soundEnabled,
+                                                isCompletion = false,
+                                                view = view,
+                                                hapticEnabled = hapticEnabled
+                                            )
+                                            selectedMenuAyahState.value = ayah
+                                        }
                                     )
                                 }
-                            }
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = ayah.surahName,
+                                        color = accentCol,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = badgeBg
+                                    ) {
+                                        Text(
+                                            text = "${ayah.ayahNumber}",
+                                            color = primaryText,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
 
-                            Text(
-                                text = ayah.arabicText,
-                                color = primaryText,
-                                fontFamily = quranFontFamily,
-                                fontSize = 22.sp,
-                                lineHeight = 38.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                                Text(
+                                    text = ayah.arabicText,
+                                    color = primaryText,
+                                    fontFamily = quranFontFamily,
+                                    fontSize = 22.sp,
+                                    lineHeight = 38.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }
             }
         }
 
+        // شريط جانبي للتحكم بسرعة رفع النص / الصفحة تلقائياً
         AnimatedVisibility(
             visible = isDrawerOpen,
             enter = slideInHorizontally(initialOffsetX = { it }),
@@ -318,7 +403,7 @@ fun QuranReaderScreen(
                 color = cardBg,
                 shadowElevation = 10.dp,
                 border = BorderStroke(1.dp, borderCol),
-                shape = RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp),
+                shape = RoundedCornerShape(topStart = 22.dp, bottomStart = 22.dp),
                 modifier = Modifier
                     .width(250.dp)
                     .fillMaxHeight()
@@ -386,7 +471,7 @@ fun QuranReaderScreen(
                                 scrollSpeedState.value = 0f
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = badgeBg),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("إيقاف", color = primaryText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -397,7 +482,7 @@ fun QuranReaderScreen(
                                 drawerOpenState.value = false
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = accentCol),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("تطبيق", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -407,6 +492,7 @@ fun QuranReaderScreen(
             }
         }
 
+        // خيارات الضغط المطول على آية محددة
         if (selectedMenuAyah != null) {
             val menuAyah = selectedMenuAyah
             val isAlreadyFav = favoriteIds.contains(menuAyah.id)
@@ -414,7 +500,7 @@ fun QuranReaderScreen(
             AlertDialog(
                 onDismissRequest = { selectedMenuAyahState.value = null },
                 containerColor = cardBg,
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(22.dp),
                 title = {
                     Text(
                         text = "${menuAyah.surahName} • آية ${menuAyah.ayahNumber}",
@@ -478,7 +564,7 @@ fun QuranReaderScreen(
                                     SoundHelper.playSystemTouchSound(context, soundEnabled, view, hapticEnabled)
                                     handler()
                                 },
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(14.dp),
                                 color = badgeBg,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -502,6 +588,7 @@ fun QuranReaderScreen(
             )
         }
 
+        // نافذة التفسير الجديدة: الآية بالأعلى وتحتها التفسير الميسر دون ذكر المصدر
         if (tafsirDialogAyah != null) {
             val currentTafsirAyah = tafsirDialogAyah
             Dialog(onDismissRequest = { tafsirDialogAyahState.value = null }) {
@@ -537,7 +624,7 @@ fun QuranReaderScreen(
                         }
 
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(18.dp),
                             color = badgeBg,
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -564,7 +651,7 @@ fun QuranReaderScreen(
                         Button(
                             onClick = { tafsirDialogAyahState.value = null },
                             colors = ButtonDefaults.buttonColors(containerColor = accentCol),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("حسناً", color = Color.White, fontWeight = FontWeight.Bold)
@@ -574,11 +661,12 @@ fun QuranReaderScreen(
             }
         }
 
+        // تنبيه "قيد التطوير" عند الضغط على خيار قراءة
         if (isUnderDev) {
             AlertDialog(
                 onDismissRequest = { underDevDialogState.value = false },
                 containerColor = cardBg,
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(22.dp),
                 title = {
                     Text(
                         text = "قيد التطوير",
@@ -604,6 +692,80 @@ fun QuranReaderScreen(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun SurahIndexRowCard(
+    surah: QuranSurahMeta,
+    cardBg: Color,
+    borderCol: Color,
+    primaryText: Color,
+    secondaryText: Color,
+    accentCol: Color,
+    badgeBg: Color,
+    onSelectSurah: (Int, Int) -> Unit
+) {
+    Card(
+        onClick = { onSelectSurah(surah.number, 1) },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        border = BorderStroke(1.dp, borderCol),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = badgeBg,
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "${surah.number}",
+                            color = accentCol,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = surah.name,
+                        color = primaryText,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        text = "${surah.revelationType} • ${surah.ayahCount} آية",
+                        color = secondaryText,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = badgeBg
+            ) {
+                Text(
+                    text = "فتح",
+                    color = accentCol,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                )
+            }
         }
     }
 }
