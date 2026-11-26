@@ -57,25 +57,29 @@ fun HomeDashboardScreen(
     val rows = actions.chunked(3)
 
     fun handleButtonPress(action: HomeQuickAction) {
-        val isZikrBtn = action == HomeQuickAction.AZKAR ||
-            action == HomeQuickAction.DUA ||
-            action == HomeQuickAction.TASBIH
-        if (isZikrBtn) {
-            SoundHelper.playZikrPressSound(
-                enabled = soundEnabled,
-                isCompletion = false,
-                view = view,
-                hapticEnabled = hapticEnabled
-            )
-        } else {
-            SoundHelper.playSystemTouchSound(
-                context = context,
-                enabled = soundEnabled,
-                view = view,
-                hapticEnabled = hapticEnabled
-            )
+        runCatching {
+            val isZikrBtn = action == HomeQuickAction.AZKAR ||
+                action == HomeQuickAction.DUA ||
+                action == HomeQuickAction.TASBIH
+            if (isZikrBtn) {
+                SoundHelper.playZikrPressSound(
+                    enabled = soundEnabled,
+                    isCompletion = false,
+                    view = view,
+                    hapticEnabled = hapticEnabled
+                )
+            } else {
+                SoundHelper.playSystemTouchSound(
+                    context = context,
+                    enabled = soundEnabled,
+                    view = view,
+                    hapticEnabled = hapticEnabled
+                )
+            }
         }
-        onActionClick(action)
+        runCatching {
+            onActionClick(action)
+        }
     }
 
     LazyColumn(
