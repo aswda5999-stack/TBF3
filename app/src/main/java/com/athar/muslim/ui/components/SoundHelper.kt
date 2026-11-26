@@ -11,18 +11,6 @@ import android.view.View
 
 object SoundHelper {
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var zikrToneGenerator: ToneGenerator? = null
-
-    private fun getZikrToneGenerator(): ToneGenerator? {
-        if (zikrToneGenerator != null) return zikrToneGenerator
-        return try {
-            ToneGenerator(AudioManager.STREAM_MUSIC, 85).also {
-                zikrToneGenerator = it
-            }
-        } catch (_: Exception) {
-            null
-        }
-    }
 
     /** صوت لمس النظام الأصلي للتنقل والأزرار العامة */
     fun playSystemTouchSound(
@@ -32,21 +20,19 @@ object SoundHelper {
         hapticEnabled: Boolean = false
     ) {
         if (hapticEnabled && view != null) {
-            try {
+            runCatching {
                 view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-            } catch (_: Exception) {
             }
         }
         if (!enabled) return
         mainHandler.post {
-            try {
+            runCatching {
                 if (view != null) {
                     view.playSoundEffect(SoundEffectConstants.CLICK)
                 } else {
                     val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
                     audioManager?.playSoundEffect(AudioManager.FX_KEY_CLICK)
                 }
-            } catch (_: Exception) {
             }
         }
     }
@@ -59,26 +45,33 @@ object SoundHelper {
         hapticEnabled: Boolean = false
     ) {
         if (hapticEnabled && view != null) {
-            try {
+            runCatching {
                 val feedback = if (isCompletion) {
                     HapticFeedbackConstants.CONFIRM
                 } else {
                     HapticFeedbackConstants.CONTEXT_CLICK
                 }
                 view.performHapticFeedback(feedback)
-            } catch (_: Exception) {
             }
         }
         if (!enabled) return
         mainHandler.post {
-            val gen = getZikrToneGenerator() ?: return@post
+            var toneGen: ToneGenerator? = null
             try {
+                toneGen = ToneGenerator(AudioManager.STREAM_MUSIC, 80)
                 if (isCompletion) {
-                    gen.startTone(ToneGenerator.TONE_PROP_PROMPT, 140)
+                    toneGen.startTone(ToneGenerator.TONE_PROP_PROMPT, 120)
                 } else {
-                    gen.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 65)
+                    toneGen.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 55)
                 }
-            } catch (_: Exception) {
+                val releaseDelay = if (isCompletion) 160L else 90L
+                val ref = toneGen
+                mainHandler.postDelayed({
+                    runCatching { ref.release() }
+                }, releaseDelay)
+                toneGen = null
+            } catch (_: Throwable) {
+                runCatching { toneGen?.release() }
             }
         }
     }
