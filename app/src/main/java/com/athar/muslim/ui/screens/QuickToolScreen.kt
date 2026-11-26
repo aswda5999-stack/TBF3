@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Mosque
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
@@ -69,9 +68,22 @@ fun QuickToolScreen(
     page: QuickToolPage,
     soundEnabled: Boolean,
     hapticEnabled: Boolean = true,
+    favoriteQuranIds: Set<Int> = emptySet(),
+    onToggleFavoriteQuranAyah: (Int) -> Unit = {},
     onOpenMorningAzkar: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (page == QuickToolPage.QURAN) {
+        QuranReaderScreen(
+            soundEnabled = soundEnabled,
+            hapticEnabled = hapticEnabled,
+            favoriteIds = favoriteQuranIds,
+            onToggleFavoriteAyah = onToggleFavoriteQuranAyah,
+            modifier = modifier
+        )
+        return
+    }
+
     val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
     val view = LocalView.current
@@ -88,52 +100,7 @@ fun QuickToolScreen(
         contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
     ) {
         when (page) {
-            QuickToolPage.QURAN -> {
-                val quranSections = listOf(
-                    RichGuideEntry(
-                        heading = "خطة الورد اليومي المنتظم",
-                        detail = "تخصيص وقت ثابت بعد صلاة الفجر أو قبل النوم لقراءة جزء أو حزب أو صفحات محددة بتركيز وتدبر.",
-                        tip = "الاستمرارية في مقدار قليل يومياً أفضل من الانقطاع بعد التوسع المرهق."
-                    ),
-                    RichGuideEntry(
-                        heading = "آداب التلاوة والخشوع",
-                        detail = "استحضار الطهارة والسكينة، واستشعار معاني الآيات وما تحمله من هداية ومواعظ وتشريعات.",
-                        tip = "تخصيص دفتر أو ملاحظة يومية لتسجيل الفوائد والمعاني التي تستوقفك أثناء التلاوة."
-                    ),
-                    RichGuideEntry(
-                        heading = "مراجعة المحفوظ والربط بين السور",
-                        detail = "مراجعة المقاطع المحفوظة دورياً وربط المقاصد العامة للسورة بمواقف الحياة اليومية.",
-                        tip = "قسّم وردك إلى فقرات قصيرة لتسهل المراجعة والتدبر دون عجلة."
-                    )
-                )
-                item {
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = scheme.surface),
-                        border = BorderStroke(1.2.dp, scheme.outlineVariant),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(18.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(Icons.Rounded.MenuBook, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(40.dp))
-                            Text("القرآن الكريم • برنامج التلاوة والتدبر", color = scheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-                            Text(
-                                text = "دليل عملي لتنظيم تلاوتك اليومية وبناء ورد ثابت يجمع بين القراءة الهادئة والتدبر المستمر.",
-                                color = scheme.onSurfaceVariant,
-                                fontSize = 12.5.sp,
-                                lineHeight = 20.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-                items(quranSections) { entry ->
-                    RichInfoCard(entry = entry)
-                }
-            }
+            QuickToolPage.QURAN -> Unit
 
             QuickToolPage.AUDIO -> {
                 val voicesCount = VoiceAzkarPlayer.discoverRawVoiceResIds(context).size
