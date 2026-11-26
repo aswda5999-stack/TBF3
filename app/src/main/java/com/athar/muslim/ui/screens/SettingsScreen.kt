@@ -42,10 +42,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -57,8 +55,8 @@ import androidx.compose.ui.unit.sp
 import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.theme.AppThemePreset
 
-private enum class SettingsSubPage(val title: String, val subtitle: String) {
-    ROOT("الضبط والإعدادات", "إعدادات منظمة وموسّعة لتطبيق أثر مسلم"),
+private enum class SettingsSection(val sectionTitle: String, val sectionSubtitle: String) {
+    MAIN("الضبط والإعدادات", "إعدادات منظمة وموسّعة لتطبيق أثر مسلم"),
     THEMES("الثيمات", "اختر من بين 5 ثيمات متكاملة"),
     NOTIFICATIONS("الإشعارات", "تخصيص تنبيهات الأذكار اليومية"),
     READING("القراءة والصوت والعدادات", "حجم الخط، الصوت، الاهتزاز، والتصفير"),
@@ -78,17 +76,21 @@ fun SettingsScreen(
     fontScaleStep: Int,
     onChangeFontScale: (Int) -> Unit,
     onResetAllCounts: () -> Unit,
-    onBackToHome: () -> Unit,
+    onBack: () -> Unit = {},
+    onBackToHome: () -> Unit = onBack,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
-    var currentPage by remember { mutableStateOf(SettingsSubPage.ROOT) }
+    val sectionState = remember { mutableStateOf(SettingsSection.MAIN) }
+    val activeSection = sectionState.value
 
     BackHandler(enabled = true) {
-        if (currentPage != SettingsSubPage.ROOT) {
-            currentPage = SettingsSubPage.ROOT
-        } else {
+        if (sectionState.value != SettingsSection.MAIN) {
+            sectionState.value = SettingsSection.MAIN
+        } else if (onBackToHome !== onBack) {
             onBackToHome()
+        } else {
+            onBack()
         }
     }
 
@@ -97,7 +99,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(scheme.background)
     ) {
-        if (currentPage != SettingsSubPage.ROOT) {
+        if (activeSection != SettingsSection.MAIN) {
             Surface(
                 color = scheme.surface,
                 shadowElevation = 2.dp,
@@ -113,7 +115,7 @@ fun SettingsScreen(
                     IconButton(
                         onClick = {
                             SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                            currentPage = SettingsSubPage.ROOT
+                            sectionState.value = SettingsSection.MAIN
                         }
                     ) {
                         Icon(
@@ -124,13 +126,13 @@ fun SettingsScreen(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = currentPage.title,
+                            text = activeSection.sectionTitle,
                             color = scheme.onSurface,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
-                            text = currentPage.subtitle,
+                            text = activeSection.sectionSubtitle,
                             color = scheme.onSurfaceVariant,
                             fontSize = 10.5.sp
                         )
@@ -139,8 +141,8 @@ fun SettingsScreen(
             }
         }
 
-        when (currentPage) {
-            SettingsSubPage.ROOT -> {
+        when (activeSection) {
+            SettingsSection.MAIN -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -156,7 +158,7 @@ fun SettingsScreen(
                             icon = Icons.Rounded.Palette,
                             onClick = {
                                 SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                currentPage = SettingsSubPage.THEMES
+                                sectionState.value = SettingsSection.THEMES
                             }
                         )
                     }
@@ -169,7 +171,7 @@ fun SettingsScreen(
                             icon = Icons.Rounded.NotificationsActive,
                             onClick = {
                                 SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                currentPage = SettingsSubPage.NOTIFICATIONS
+                                sectionState.value = SettingsSection.NOTIFICATIONS
                             }
                         )
                     }
@@ -180,7 +182,7 @@ fun SettingsScreen(
                             icon = Icons.Rounded.FormatSize,
                             onClick = {
                                 SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                currentPage = SettingsSubPage.READING
+                                sectionState.value = SettingsSection.READING
                             }
                         )
                     }
@@ -193,14 +195,14 @@ fun SettingsScreen(
                             icon = Icons.Rounded.Info,
                             onClick = {
                                 SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
-                                currentPage = SettingsSubPage.ABOUT
+                                sectionState.value = SettingsSection.ABOUT
                             }
                         )
                     }
                 }
             }
 
-            SettingsSubPage.THEMES -> {
+            SettingsSection.THEMES -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -282,7 +284,7 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsSubPage.NOTIFICATIONS -> {
+            SettingsSection.NOTIFICATIONS -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -334,7 +336,7 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsSubPage.READING -> {
+            SettingsSection.READING -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -469,7 +471,7 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsSubPage.ABOUT -> {
+            SettingsSection.ABOUT -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
