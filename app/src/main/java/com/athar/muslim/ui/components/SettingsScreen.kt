@@ -78,17 +78,26 @@ fun SettingsScreen(
     fontScaleStep: Int,
     onChangeFontScale: (Int) -> Unit,
     onResetAllCounts: () -> Unit,
-    onBackToHome: () -> Unit,
+    onBack: () -> Unit = {},
+    onBackToHome: () -> Unit = onBack,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
     var activeSection by rememberSaveable { mutableStateOf(SettingsSection.MAIN) }
 
+    val handleBack: () -> Unit = {
+        if (onBackToHome !== onBack) {
+            onBackToHome()
+        } else {
+            onBack()
+        }
+    }
+
     BackHandler(enabled = true) {
         if (activeSection != SettingsSection.MAIN) {
             activeSection = SettingsSection.MAIN
         } else {
-            onBackToHome()
+            handleBack()
         }
     }
 
