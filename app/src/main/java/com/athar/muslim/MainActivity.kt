@@ -194,13 +194,15 @@ fun AtharMuslimApp(
     val lastReadingAction = HomeQuickAction.entries.firstOrNull { it.id == lastReadingActionIdState.value }
         ?: HomeQuickAction.QURAN
 
-    fun recordLastReading(title: String, action: HomeQuickAction) {
+    fun recordLastReading(title: String, actionId: String) {
         lastReadingTitleState.value = title
-        lastReadingActionIdState.value = action.id
-        prefs.edit()
-            .putString("last_reading_title", title)
-            .putString("last_reading_action_id", action.id)
-            .apply()
+        lastReadingActionIdState.value = actionId
+        runCatching {
+            prefs.edit()
+                .putString("last_reading_title", title)
+                .putString("last_reading_action_id", actionId)
+                .apply()
+        }
     }
 
     val discoveredVoicesCount = remember {
@@ -553,7 +555,7 @@ fun AtharMuslimApp(
                         favoriteQuranIdsState.value = nextSet
                     },
                     onOpenMorningAzkar = {
-                        recordLastReading("أذكار الصباح", HomeQuickAction.AZKAR)
+                        recordLastReading("أذكار الصباح", HomeQuickAction.AZKAR.id)
                         activeToolPageState.value = null
                         selectedTabState.value = MainBottomTab.AZKAR
                         selectedAzkarCategoryState.value = AzkarSubCategory.MORNING
@@ -591,7 +593,7 @@ fun AtharMuslimApp(
                     soundEnabled = soundEnabled,
                     hapticEnabled = vibrationEnabled,
                     onSelectTopic = { topic ->
-                        recordLastReading(topic.title, HomeQuickAction.HADITH)
+                        recordLastReading(topic.title, HomeQuickAction.HADITH.id)
                         selectedHadithTopicState.value = topic
                     }
                 )
@@ -607,35 +609,56 @@ fun AtharMuslimApp(
                         soundEnabled = soundEnabled,
                         hapticEnabled = vibrationEnabled,
                         onActionClick = { action ->
-                            when (action) {
-                                HomeQuickAction.QURAN -> {
-                                    recordLastReading("القرآن الكريم • فهرس السور", HomeQuickAction.QURAN)
-                                    activeToolPageState.value = QuickToolPage.QURAN
-                                }
-                                HomeQuickAction.AUDIO -> activeToolPageState.value = QuickToolPage.AUDIO
-                                HomeQuickAction.PRAYER -> activeToolPageState.value = QuickToolPage.PRAYER_GUIDE
-                                HomeQuickAction.FOLLOW_US -> {
-                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, "تطبيق أثر مسلم Pro — للأذكار والأدعية والقرآن والأحاديث.")
+                            runCatching {
+                                when (action) {
+                                    HomeQuickAction.QURAN -> {
+                                        recordLastReading("القرآن الكريم • فهرس السور", action.id)
+                                        activeToolPageState.value = QuickToolPage.QURAN
                                     }
-                                    context.startActivity(Intent.createChooser(shareIntent, "مشاركة أثر مسلم"))
+                                    HomeQuickAction.AUDIO -> {
+                                        recordLastReading("الصوتيات والتذكير الصوتي", action.id)
+                                        activeToolPageState.value = QuickToolPage.AUDIO
+                                    }
+                                    HomeQuickAction.PRAYER -> {
+                                        recordLastReading("دليل الصلاة والخشوع", action.id)
+                                        activeToolPageState.value = QuickToolPage.PRAYER_GUIDE
+                                    }
+                                    HomeQuickAction.FOLLOW_US -> {
+                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(
+                                                Intent.EXTRA_TEXT,
+                                                "تطبيق أثر مسلم Pro — للأذكار والأدعية والقرآن والأحاديث."
+                                            )
+                                        }
+                                        val chooser = Intent.createChooser(shareIntent, "مشاركة أثر مسلم")
+                                        if (context !is Activity) {
+                                            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(chooser)
+                                    }
+                                    HomeQuickAction.HADITH -> {
+                                        recordLastReading("الأحاديث • فئات الكتب الستة", action.id)
+                                        hadithCategoriesOpenState.value = true
+                                    }
+                                    HomeQuickAction.AZKAR -> {
+                                        recordLastReading("الأذكار اليومية", action.id)
+                                        selectedTabState.value = MainBottomTab.AZKAR
+                                        selectedAzkarCategoryState.value = null
+                                    }
+                                    HomeQuickAction.DUA -> {
+                                        recordLastReading("الأدعية المختارة", action.id)
+                                        selectedTabState.value = MainBottomTab.DUA
+                                    }
+                                    HomeQuickAction.TASBIH -> {
+                                        recordLastReading("المسبحة الإلكترونية", action.id)
+                                        activeToolPageState.value = QuickToolPage.TASBIH
+                                    }
+                                    HomeQuickAction.QIBLA -> {
+                                        recordLastReading("بوصلة القبلة", action.id)
+                                        activeToolPageState.value = QuickToolPage.QIBLA
+                                    }
                                 }
-                                HomeQuickAction.HADITH -> {
-                                    recordLastReading("الأحاديث • فئات الكتب الستة", HomeQuickAction.HADITH)
-                                    hadithCategoriesOpenState.value = true
-                                }
-                                HomeQuickAction.AZKAR -> {
-                                    recordLastReading("الأذكار اليومية", HomeQuickAction.AZKAR)
-                                    selectedTabState.value = MainBottomTab.AZKAR
-                                    selectedAzkarCategoryState.value = null
-                                }
-                                HomeQuickAction.DUA -> {
-                                    recordLastReading("الأدعية المختارة", HomeQuickAction.DUA)
-                                    selectedTabState.value = MainBottomTab.DUA
-                                }
-                                HomeQuickAction.TASBIH -> activeToolPageState.value = QuickToolPage.TASBIH
-                                HomeQuickAction.QIBLA -> activeToolPageState.value = QuickToolPage.QIBLA
                             }
                         }
                     )
@@ -650,7 +673,7 @@ fun AtharMuslimApp(
                             soundEnabled = soundEnabled,
                             hapticEnabled = vibrationEnabled,
                             onSelectCategory = { cat ->
-                                recordLastReading(cat.title, HomeQuickAction.AZKAR)
+                                recordLastReading(cat.title, HomeQuickAction.AZKAR.id)
                                 selectedAzkarCategoryState.value = cat
                             }
                         )
