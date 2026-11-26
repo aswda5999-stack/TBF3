@@ -72,35 +72,64 @@ enum class AzkarSubCategory(
 enum class HadithTopic(
     val title: String,
     val subtitle: String,
-    val queryTerm: String,
+    val remoteSlug: String,
     val icon: ImageVector,
     val isFavorites: Boolean = false
 ) {
     FAVORITES(
         title = "المفضلة",
-        subtitle = "الأحاديث المحفوظة لديك",
-        queryTerm = "",
+        subtitle = "الأحاديث المحفوظة في مفضلتك",
+        remoteSlug = "",
         icon = Icons.Rounded.Favorite,
         isFavorites = true
     ),
     BUKHARI(
         title = "صحيح البخاري",
-        subtitle = "مختارات من صحيح الإمام البخاري",
-        queryTerm = "البخاري",
-        icon = Icons.Rounded.AutoStories
-    ),
-    PROPHET(
-        title = "سيرة وهدي النبي ﷺ",
-        subtitle = "أحاديث في أخلاق النبي ﷺ وهديه",
-        queryTerm = "النبي",
+        subtitle = "أحاديث مختارة ومرتبة من صحيح البخاري",
+        remoteSlug = "bukhari",
         icon = Icons.Rounded.AutoStories
     ),
     MUSLIM(
         title = "صحيح مسلم",
-        subtitle = "مختارات من صحيح الإمام مسلم",
-        queryTerm = "مسلم",
+        subtitle = "أحاديث مختارة ومرتبة من صحيح مسلم",
+        remoteSlug = "muslim",
         icon = Icons.Rounded.AutoStories
-    )
+    ),
+    ABU_DAWUD(
+        title = "سنن أبي داود",
+        subtitle = "مختارات من سنن أبي داود",
+        remoteSlug = "abu-daud",
+        icon = Icons.Rounded.AutoStories
+    ),
+    TIRMIDHI(
+        title = "جامع الترمذي",
+        subtitle = "مختارات من جامع الترمذي",
+        remoteSlug = "tirmidzi",
+        icon = Icons.Rounded.AutoStories
+    ),
+    NASAI(
+        title = "سنن النسائي",
+        subtitle = "مختارات من سنن النسائي",
+        remoteSlug = "nasai",
+        icon = Icons.Rounded.AutoStories
+    ),
+    IBN_MAJAH(
+        title = "سنن ابن ماجه",
+        subtitle = "مختارات من سنن ابن ماجه",
+        remoteSlug = "ibnu-majjah",
+        icon = Icons.Rounded.AutoStories
+    );
+
+    companion object {
+        val sixMainCategories: List<HadithTopic> = listOf(
+            BUKHARI,
+            MUSLIM,
+            ABU_DAWUD,
+            TIRMIDHI,
+            NASAI,
+            IBN_MAJAH
+        )
+    }
 }
 
 enum class VoiceReminderIntensity(
