@@ -16,15 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoStories
-import androidx.compose.material.icons.rounded.Explore
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.MenuBook
-import androidx.compose.material.icons.rounded.Mosque
-import androidx.compose.material.icons.rounded.RadioButtonChecked
-import androidx.compose.material.icons.rounded.SelfImprovement
-import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -34,37 +25,30 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.athar.muslim.ui.components.SoundHelper
-
-enum class HomeQuickAction(
-    val title: String,
-    val icon: ImageVector
-) {
-    HADITH("الأحاديث", Icons.Rounded.AutoStories),
-    AZKAR("الأذكار", Icons.Rounded.MenuBook),
-    DUA("الأدعية", Icons.Rounded.SelfImprovement),
-    FAVORITES("المفضلة", Icons.Rounded.Favorite),
-    TASBIH("المسبحة", Icons.Rounded.RadioButtonChecked),
-    QIBLA("البوصلة", Icons.Rounded.Explore),
-    PRAYER_GUIDE("تعلم الصلاة", Icons.Rounded.Mosque),
-    MORNING_FOCUS("ورد اليوم", Icons.Rounded.WbSunny)
-}
+import com.athar.muslim.ui.screens.buttons.HomeQuickAction
+import com.athar.muslim.ui.screens.buttons.HomeQuickActionRegistry
 
 @Composable
 fun HomeDashboardScreen(
     favoritesCount: Int,
     soundEnabled: Boolean = true,
+    hapticEnabled: Boolean = true,
     onActionClick: (HomeQuickAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
-    val rows = HomeQuickAction.entries.chunked(4)
+    val context = LocalContext.current
+    val view = LocalView.current
+    val actions = HomeQuickActionRegistry.orderedActions()
+    val rows = actions.chunked(3)
 
     LazyColumn(
         modifier = modifier
@@ -72,7 +56,7 @@ fun HomeDashboardScreen(
             .background(scheme.background)
             .padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(top = 10.dp, bottom = 18.dp)
+        contentPadding = PaddingValues(top = 10.dp, bottom = 20.dp)
     ) {
         item {
             Card(
@@ -96,7 +80,7 @@ fun HomeDashboardScreen(
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
-                            text = "وصول سريع ومباشر للأقسام والأدوات",
+                            text = "9 أقسام وأدوات متكاملة لخدمتك اليومية",
                             color = scheme.onSurfaceVariant,
                             fontSize = 11.sp
                         )
@@ -127,13 +111,30 @@ fun HomeDashboardScreen(
                     QuickGridButton(
                         action = action,
                         onClick = {
-                            SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = false)
+                            val isZikrBtn = action == HomeQuickAction.AZKAR ||
+                                action == HomeQuickAction.DUA ||
+                                action == HomeQuickAction.TASBIH
+                            if (isZikrBtn) {
+                                SoundHelper.playZikrPressSound(
+                                    enabled = soundEnabled,
+                                    isCompletion = false,
+                                    view = view,
+                                    hapticEnabled = hapticEnabled
+                                )
+                            } else {
+                                SoundHelper.playSystemTouchSound(
+                                    context = context,
+                                    enabled = soundEnabled,
+                                    view = view,
+                                    hapticEnabled = hapticEnabled
+                                )
+                            }
                             onActionClick(action)
                         },
                         modifier = Modifier.weight(1f)
                     )
                 }
-                repeat(4 - rowItems.size) {
+                repeat(3 - rowItems.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
@@ -150,11 +151,11 @@ private fun QuickGridButton(
     val scheme = MaterialTheme.colorScheme
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(15.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = scheme.surface),
         border = BorderStroke(1.dp, scheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
-        modifier = modifier.height(94.dp)
+        modifier = modifier.height(96.dp)
     ) {
         Column(
             modifier = Modifier
