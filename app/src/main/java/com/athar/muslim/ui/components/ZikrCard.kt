@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +34,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.athar.muslim.model.ZikrItem
@@ -63,175 +66,179 @@ fun ZikrCard(
     val context = LocalContext.current
     val scheme = MaterialTheme.colorScheme
     val isDone = remainingCount <= 0
+    val total = item.count.coerceAtLeast(1)
+    val progress = ((total - remainingCount.coerceIn(0, total)).toFloat() / total.toFloat())
 
     val textSizeSp = when (fontScaleStep) {
-        0 -> 15.sp
-        2 -> 21.sp
-        else -> 18.sp
+        0 -> 14.sp
+        2 -> 19.sp
+        else -> 16.5.sp
     }
     val lineHeightSp = when (fontScaleStep) {
-        0 -> 25.sp
-        2 -> 34.sp
-        else -> 29.sp
+        0 -> 23.sp
+        2 -> 31.sp
+        else -> 27.sp
     }
 
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDone) scheme.primaryContainer.copy(alpha = 0.65f) else scheme.surface
+            containerColor = if (isDone) scheme.primaryContainer.copy(alpha = 0.6f) else scheme.surface
         ),
         border = BorderStroke(
-            width = if (isDone) 1.8.dp else 1.2.dp,
+            width = if (isDone) 1.5.dp else 1.dp,
             color = if (isDone) scheme.tertiary else scheme.outlineVariant
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // شريط علوي للبطاقة (نسخ، مشاركة، مفضلة، حالة الإتمام)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = if (isDone) scheme.primary else scheme.primaryContainer,
-                    border = BorderStroke(1.dp, scheme.outlineVariant)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        if (isDone) {
-                            Icon(
-                                imageVector = Icons.Rounded.CheckCircle,
-                                contentDescription = null,
-                                tint = scheme.onPrimary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                        Text(
-                            text = if (isDone) "تمت القراءة" else "المتبقي: $remainingCount",
-                            color = if (isDone) scheme.onPrimary else scheme.onPrimaryContainer,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                Text(
+                    text = item.title.ifBlank { item.category },
+                    color = scheme.primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (showFavoriteButton && onToggleFavorite != null) {
-                        IconButton(onClick = onToggleFavorite, modifier = Modifier.size(36.dp)) {
+                    if (onToggleFavorite != null) {
+                        IconButton(onClick = onToggleFavorite, modifier = Modifier.size(32.dp)) {
                             Icon(
                                 imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                                 contentDescription = "مفضلة",
                                 tint = if (isFavorite) scheme.tertiary else scheme.primary,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(19.dp)
                             )
                         }
                     }
-
                     IconButton(
                         onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText("أثر مسلم", item.text))
-                            Toast.makeText(context, "تم نسخ النص", Toast.LENGTH_SHORT).show()
+                            runCatching {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("أثر مسلم", item.text))
+                                Toast.makeText(context, "تم نسخ النص", Toast.LENGTH_SHORT).show()
+                            }
                         },
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ContentCopy,
                             contentDescription = "نسخ",
                             tint = scheme.primary,
-                            modifier = Modifier.size(19.dp)
+                            modifier = Modifier.size(17.dp)
                         )
                     }
-
                     IconButton(
                         onClick = {
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "${item.text}\n\n— تطبيق أثر مسلم")
+                            runCatching {
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, "${item.text}\n\n— تطبيق أثر مسلم")
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "مشاركة"))
                             }
-                            context.startActivity(Intent.createChooser(shareIntent, "مشاركة"))
                         },
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Share,
                             contentDescription = "مشاركة",
                             tint = scheme.primary,
-                            modifier = Modifier.size(19.dp)
+                            modifier = Modifier.size(17.dp)
                         )
                     }
                 }
             }
 
-            // نص الذكر أو الدعاء أو الحديث
             Text(
                 text = item.text,
                 color = scheme.onSurface,
                 fontSize = textSizeSp,
                 lineHeight = lineHeightSp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
             )
 
             if (item.benefit.isNotBlank()) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = scheme.surfaceVariant.copy(alpha = 0.75f),
+                Text(
+                    text = item.benefit,
+                    color = scheme.onSurfaceVariant,
+                    fontSize = 11.5.sp,
+                    lineHeight = 17.sp,
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = item.benefit,
-                        color = scheme.onSurfaceVariant,
-                        fontSize = 12.5.sp,
-                        lineHeight = 19.sp,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                    )
-                }
+                )
             }
 
-            HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.5f))
-
-            // زر العد التفاعلي
-            Button(
-                onClick = {
-                    if (remainingCount > 0) {
-                        val willComplete = remainingCount == 1
-                        SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = willComplete)
-                        if (vibrationEnabled) {
-                            triggerLightHaptic(context)
-                        }
-                        onDecrement()
-                    }
-                },
-                enabled = !isDone,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = scheme.primary,
-                    contentColor = scheme.onPrimary,
-                    disabledContainerColor = scheme.primaryContainer,
-                    disabledContentColor = scheme.onPrimaryContainer
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(44.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(
-                    text = if (isDone) "أحسنت • اكتمل العدد" else if (isZikrMode) "اضغط للتسبيح ($remainingCount)" else "تمت القراءة ($remainingCount)",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
+                if (total > 1) {
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        color = scheme.tertiary,
+                        trackColor = scheme.outlineVariant.copy(alpha = 0.5f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(5.dp)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+
+                Button(
+                    onClick = {
+                        if (remainingCount > 0) {
+                            val willComplete = remainingCount == 1
+                            SoundHelper.playTapSound(enabled = soundEnabled, isCompletion = willComplete)
+                            if (vibrationEnabled) {
+                                triggerLightHaptic(context)
+                            }
+                            onDecrement()
+                        }
+                    },
+                    enabled = !isDone,
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = scheme.primary,
+                        contentColor = scheme.onPrimary,
+                        disabledContainerColor = scheme.primaryContainer,
+                        disabledContentColor = scheme.onPrimaryContainer
+                    ),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    if (isDone) {
+                        Icon(
+                            imageVector = Icons.Rounded.CheckCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.size(4.dp))
+                        Text(text = "تم", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+                    } else {
+                        Text(
+                            text = if (isZikrMode) "سبّح  $remainingCount" else if (total > 1) "اقرأ  $remainingCount" else "تمت القراءة",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
             }
         }
     }
