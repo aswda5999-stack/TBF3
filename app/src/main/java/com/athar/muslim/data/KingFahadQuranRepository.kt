@@ -1,7 +1,13 @@
 package com.athar.muslim.data
 
+import android.content.Context
 import com.athar.muslim.model.QuranAyah
 import com.athar.muslim.model.QuranSurahMeta
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 object KingFahadQuranRepository {
 
@@ -177,22 +183,132 @@ object KingFahadQuranRepository {
         )
     )
 
+    // ذاكرة مؤقتة للسور المحمّلة (نص عثماني + التفسير الميسر)
+    private val loadedSurahs = java.util.concurrent.ConcurrentHashMap<Int, List<QuranAyah>>()
+
+    private const val ARABIC_EDITION = "quran-uthmani"
+    private const val TAFSIR_EDITION = "ar.muyassar"
+
     fun getFullSurahIndex(): List<QuranSurahMeta> = fullSurahIndex
+
+    /** هل نص السورة جاهز للعرض (محمّل من الإنترنت سابقاً أو متوفر محلياً بالكامل)؟ */
+    fun isSurahReady(surahNumber: Int): Boolean {
+        if (loadedSurahs.containsKey(surahNumber)) return true
+        val meta = fullSurahIndex.firstOrNull { it.number == surahNumber } ?: return false
+        return (1..meta.ayahCount).all { curatedAyahs.containsKey(meta.number to it) }
+    }
+
+    /**
+     * يحمّل نص السورة من ملف التخزين المحلي، وإن لم يوجد يجلبه من الإنترنت ويحفظه
+     * ليعمل بعدها دون اتصال. يُستدعى من خيط الخلفية.
+     */
+    fun ensureSurahLoaded(context: Context, surahNumber: Int): Boolean {
+        if (loadedSurahs.containsKey(surahNumber)) return true
+        val meta = fullSurahIndex.firstOrNull { it.number == surahNumber } ?: return false
+        val dir = File(context.filesDir, "quran")
+        val cacheFile = File(dir, "surah_$surahNumber.json")
+
+        val cached = runCatching {
+            if (cacheFile.exists()) parseSurahJson(meta, cacheFile.readText()) else null
+        }.getOrNull()
+        if (!cached.isNullOrEmpty()) {
+            loadedSurahs[surahNumber] = cached
+            return true
+        }
+
+        var connection: HttpURLConnection? = null
+        return try {
+            val endpoint = "https://api.alquran.cloud/v1/surah/$surahNumber/editions/$ARABIC_EDITION,$TAFSIR_EDITION"
+            connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8000
+                readTimeout = 12000
+                setRequestProperty("Accept", "application/json")
+            }
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) return false
+            val raw = connection.inputStream.bufferedReader().use { it.readText() }
+            val parsed = parseSurahJson(meta, raw)
+            if (parsed.isNullOrEmpty() || parsed.size != meta.ayahCount) return false
+            runCatching {
+                dir.mkdirs()
+                cacheFile.writeText(raw)
+            }
+            loadedSurahs[surahNumber] = parsed
+            true
+        } catch (_: Exception) {
+            false
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    private fun stripDiacritics(word: String): String =
+        word.filter { ch -> ch.code !in 0x064B..0x065F && ch.code != 0x0670 && ch.code != 0x0640 }
+
+    private fun parseSurahJson(meta: QuranSurahMeta, raw: String): List<QuranAyah>? {
+        val data = JSONObject(raw).optJSONArray("data") ?: return null
+        var arabicAyahs: JSONArray? = null
+        var tafsirAyahs: JSONArray? = null
+        for (i in 0 until data.length()) {
+            val edition = data.optJSONObject(i) ?: continue
+            val id = edition.optJSONObject("edition")?.optString("identifier").orEmpty()
+            if (id == ARABIC_EDITION) arabicAyahs = edition.optJSONArray("ayahs")
+            if (id == TAFSIR_EDITION) tafsirAyahs = edition.optJSONArray("ayahs")
+        }
+        val arabic = arabicAyahs ?: return null
+        val result = mutableListOf<QuranAyah>()
+        for (i in 0 until arabic.length()) {
+            val obj = arabic.optJSONObject(i) ?: continue
+            val number = obj.optInt("numberInSurah", i + 1)
+            var text = obj.optString("text", "").trim()
+            // نسخة الواجهة تضيف البسملة لأول آية في السور، فنفصلها عن نص الآية
+            if (number == 1 && meta.number != 1 && meta.number != 9) {
+                val words = text.split(" ").filter { it.isNotBlank() }
+                if (words.size > 4 && stripDiacritics(words[0]).startsWith("بسم")) {
+                    text = words.drop(4).joinToString(" ")
+                }
+            }
+            val tafsir = tafsirAyahs?.optJSONObject(i)?.optString("text", "").orEmpty().trim()
+            result.add(
+                QuranAyah(
+                    id = meta.number * 1000 + number,
+                    surahNumber = meta.number,
+                    surahName = meta.name,
+                    ayahNumber = number,
+                    arabicText = text,
+                    tafsirMuyassar = tafsir.ifBlank { "التفسير الميسر غير متوفر لهذه الآية حالياً." }
+                )
+            )
+        }
+        return result
+    }
 
     fun getAyahsForSurah(surahNumber: Int): List<QuranAyah> {
         val meta = fullSurahIndex.firstOrNull { it.number == surahNumber } ?: fullSurahIndex.first()
+        loadedSurahs[meta.number]?.let { return it }
+
+        val hasFullOfflineText = (1..meta.ayahCount).all { curatedAyahs.containsKey(meta.number to it) }
+        if (!hasFullOfflineText) {
+            return listOf(
+                QuranAyah(
+                    id = meta.number * 1000 + 1,
+                    surahNumber = meta.number,
+                    surahName = meta.name,
+                    ayahNumber = 1,
+                    arabicText = "تعذّر تحميل نص ${meta.name}. اتصل بالإنترنت مرة واحدة ثم أعد فتح السورة، وبعدها تعمل دون اتصال.",
+                    tafsirMuyassar = ""
+                )
+            )
+        }
         return (1..meta.ayahCount).map { ayahNum ->
             val pair = curatedAyahs[meta.number to ayahNum]
-            val arabic = pair?.first ?: "${meta.name} • الآية ($ayahNum)"
-            val tafsir = pair?.second
-                ?: "توضيح ميسّر للآية رقم ($ayahNum) من ${meta.name} في إطار ${meta.summaryTheme}."
             QuranAyah(
                 id = meta.number * 1000 + ayahNum,
                 surahNumber = meta.number,
                 surahName = meta.name,
                 ayahNumber = ayahNum,
-                arabicText = arabic,
-                tafsirMuyassar = tafsir
+                arabicText = pair?.first.orEmpty(),
+                tafsirMuyassar = pair?.second.orEmpty()
             )
         }
     }
