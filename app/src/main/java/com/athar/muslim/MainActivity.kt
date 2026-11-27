@@ -1,9 +1,12 @@
 package com.athar.muslim
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -69,11 +72,16 @@ import com.athar.muslim.ui.components.SkyBottomBar
 import com.athar.muslim.ui.components.SkyHeaderDecor
 import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.components.ZikrCard
+import com.athar.muslim.ui.screens.HadithScreen
 import com.athar.muslim.ui.screens.HomeDashboardScreen
+import com.athar.muslim.ui.screens.QiblaCompassScreen
+import com.athar.muslim.ui.screens.QuickToolPage
+import com.athar.muslim.ui.screens.QuickToolScreen
 import com.athar.muslim.ui.screens.SettingsScreen
 import com.athar.muslim.ui.screens.buttons.HomeQuickAction
 import com.athar.muslim.ui.theme.AppThemePreset
 import com.athar.muslim.ui.theme.AtharMuslimTheme
+import com.athar.muslim.util.CrashLogger
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -89,204 +97,10 @@ private fun todayKey(): String {
     return formatter.format(Date())
 }
 
-private fun buildItemsForHomeAction(action: HomeQuickAction): List<ZikrItem> {
-    return when (action) {
-        HomeQuickAction.QURAN -> listOf(
-            ZikrItem(
-                id = 9101,
-                title = "فهرس القرآن الكريم • السور المكية والمدنية",
-                text = "114 سورة مرتبة من الفاتحة إلى الناس لتلاوة منتظمة وتدبر يومي متواصل.",
-                count = 1,
-                benefit = "تخصيص ورد يومي ثابت من القرآن الكريم يثبّت القلب وينير الوقت.",
-                category = "القرآن الكريم"
-            ),
-            ZikrItem(
-                id = 9102,
-                title = "سور التلاوة والسكينة اليومية",
-                text = "سورة البقرة، سورة الكهف، سورة يس، سورة الملك، والمعوذات والإخلاص.",
-                count = 3,
-                benefit = "المداومة على قراءة السور المباركة في أوقاتها المفضلة.",
-                category = "القرآن الكريم"
-            ),
-            ZikrItem(
-                id = 9103,
-                title = "التدبر والمراجعة وحفظ الورد",
-                text = "اقرأ بتأنٍ ووضوح، وتابع آياتك المفضلة ومعانيها الميسّرة خطوة بخطوة.",
-                count = 1,
-                benefit = "الفهم والعمل بالقرآن هما الغاية الكبرى للتلاوة.",
-                category = "القرآن الكريم"
-            )
-        )
-
-        HomeQuickAction.AUDIO -> listOf(
-            ZikrItem(
-                id = 9201,
-                title = "الصوتيات والتذكير الصوتي الذكي",
-                text = "يلتقط التطبيق تلقائياً ملفات الصوت في مجلد الموارد الصوتية ويشغّلها حسب الشدة المختارة.",
-                count = 1,
-                benefit = "يمكن التحكم بالتفعيل والشدة (منخفض، متوسط، مرتفع) من شاشة الضبط.",
-                category = "الصوتيات"
-            ),
-            ZikrItem(
-                id = 9202,
-                title = "الاستمرار أثناء إطفاء الشاشة",
-                text = "يعمل التذكير الصوتي بانتظام حتى عند إغلاق الشاشة لتبقى على صلة بالذكر في كل وقت.",
-                count = 1,
-                benefit = "مناسب أثناء التنقل والراحة والعمل اليومي.",
-                category = "الصوتيات"
-            )
-        )
-
-        HomeQuickAction.PRAYER -> listOf(
-            ZikrItem(
-                id = 9301,
-                title = "الاستعداد واستقبال القبلة والخشوع",
-                text = "إسباغ الوضوء، واستحضار النية، والتوجه نحو القبلة بسكينة ووقار.",
-                count = 1,
-                benefit = "الاستعداد الهادئ يهيّئ القلب لحضور الصلاة.",
-                category = "الصلاة"
-            ),
-            ZikrItem(
-                id = 9302,
-                title = "أركان الصلاة والطمأنينة",
-                text = "تكبيرة الإحرام، وقراءة الفاتحة، والركوع والاعتدال، والسجود، والتشهد مع الطمأنينة في كل ركن.",
-                count = 5,
-                benefit = "الطمأنينة ركن أساسي لصحة الصلاة وكمالها.",
-                category = "الصلاة"
-            ),
-            ZikrItem(
-                id = 9303,
-                title = "أذكار ما بعد السلام",
-                text = "الاستغفار ثلاثاً، والتسبيح والتحميد والتكبير عقب الصلوات المكتوبة.",
-                count = 33,
-                benefit = "ختم الصلاة بالأذكار المشروعة يكمّل أجرها.",
-                category = "الصلاة"
-            )
-        )
-
-        HomeQuickAction.FOLLOW_US -> listOf(
-            ZikrItem(
-                id = 9401,
-                title = "مشاركة تطبيق أثر مسلم Pro",
-                text = "شارك التطبيق مع أهلك وأصدقائك ليكون لهم عوناً على الأذكار والأدعية والقرآن والأحاديث.",
-                count = 1,
-                benefit = "الدلالة على الخير من أعظم أبواب الأجر المتجدد.",
-                category = "تابعنا"
-            ),
-            ZikrItem(
-                id = 9402,
-                title = "متابعة التحديثات والتحسينات",
-                text = "تابع الإصدارات الجديدة لتطبيق أثر مسلم Pro للاستفادة من المزايا والتحسينات المستمرة.",
-                count = 1,
-                benefit = "تحديثات دورية تركز على السرعة والاستقرار وسهولة الاستخدام.",
-                category = "تابعنا"
-            )
-        )
-
-        HomeQuickAction.HADITH -> listOf(
-            ZikrItem(
-                id = 9501,
-                title = "1. صحيح البخاري",
-                text = "الأحاديث الصحيحة المختارة في الإيمان والعمل والآداب والأخلاق.",
-                count = 1,
-                benefit = "من أصح كتب السنة النبوية وأعظمها مكانة.",
-                category = "الأحاديث"
-            ),
-            ZikrItem(
-                id = 9502,
-                title = "2. صحيح مسلم",
-                text = "مختارات دقيقة من صحيح مسلم في التزكية والعبادات والمعاملات.",
-                count = 1,
-                benefit = "تميز بحسن الترتيب والجمع بين طرق الرواية.",
-                category = "الأحاديث"
-            ),
-            ZikrItem(
-                id = 9503,
-                title = "3. سنن أبي داود",
-                text = "أحاديث الأحكام والسنن اليومية في الطهارة والصلاة والآداب.",
-                count = 1,
-                benefit = "مرجع مهم في سنن العبادات والحياة اليومية.",
-                category = "الأحاديث"
-            ),
-            ZikrItem(
-                id = 9504,
-                title = "4. جامع الترمذي",
-                text = "أحاديث الشمائل والرقائق والآداب والفضائل والسنن.",
-                count = 1,
-                benefit = "يجمع بين الفوائد الحديثية والفقهية والتربوية.",
-                category = "الأحاديث"
-            ),
-            ZikrItem(
-                id = 9505,
-                title = "5. سنن النسائي",
-                text = "مختارات مركزة في السنن والآداب والأذكار والعبادات.",
-                count = 1,
-                benefit = "يُعنى بدقة التبويب والاختيار.",
-                category = "الأحاديث"
-            ),
-            ZikrItem(
-                id = 9506,
-                title = "6. سنن ابن ماجه",
-                text = "مختارات من سنن ابن ماجه في الدعوة والزهد والآداب والسنن.",
-                count = 1,
-                benefit = "يكمّل منظومة الكتب الستة المشهورة.",
-                category = "الأحاديث"
-            )
-        )
-
-        HomeQuickAction.TASBIH -> listOf(
-            ZikrItem(
-                id = 9601,
-                title = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
-                text = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
-                count = 100,
-                benefit = "من قالها مائة مرة في اليوم غفرت خطاياه وإن كانت مثل زبد البحر.",
-                category = "المسبحة"
-            ),
-            ZikrItem(
-                id = 9602,
-                title = "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ",
-                text = "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ",
-                count = 100,
-                benefit = "الاستغفار يفتح أبواب الطمأنينة والفرج والبركة.",
-                category = "المسبحة"
-            ),
-            ZikrItem(
-                id = 9603,
-                title = "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ",
-                text = "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
-                count = 33,
-                benefit = "ذكر التوحيد العظيم وحفظ النفس وطمأنينة القلب.",
-                category = "المسبحة"
-            )
-        )
-
-        HomeQuickAction.QIBLA -> listOf(
-            ZikrItem(
-                id = 9701,
-                title = "تفعيل الموقع الجغرافي (GPS)",
-                text = "تأكد من تفعيل خدمة الموقع ومنح إذن الموقع الدقيق للحصول على اتجاه قبلة صحيح.",
-                count = 1,
-                benefit = "تحديد الموقع بدقة أساس حساب زاوية القبلة من أي مكان.",
-                category = "البوصلة"
-            ),
-            ZikrItem(
-                id = 9702,
-                title = "معايرة الهاتف وتجنب المغناطيس",
-                text = "حرّك الهاتف حركة هادئة على شكل رقم ثمانية وابتعد عن المجالات المغناطيسية أو الأغطية المعدنية.",
-                count = 1,
-                benefit = "يمنح مستشعر الاتجاه قراءة أكثر استقراراً ودقة.",
-                category = "البوصلة"
-            )
-        )
-
-        HomeQuickAction.AZKAR, HomeQuickAction.DUA -> emptyList()
-    }
-}
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashLogger.install(applicationContext)
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
@@ -383,6 +197,26 @@ fun AtharMuslimApp(
         }
     }
 
+    val favoriteQuranIds = remember {
+        mutableStateOf(
+            runCatching {
+                prefs.getStringSet("quran_fav_ids", emptySet()).orEmpty()
+                    .mapNotNull { it.toIntOrNull() }.toSet()
+            }.getOrDefault(emptySet())
+        )
+    }
+
+    fun toggleFavoriteAyah(id: Int) {
+        val current = favoriteQuranIds.value
+        val updated = if (current.contains(id)) current - id else current + id
+        favoriteQuranIds.value = updated
+        runCatching {
+            prefs.edit().putStringSet("quran_fav_ids", updated.map { it.toString() }.toSet()).apply()
+        }
+    }
+
+    val crashReportState = remember { mutableStateOf(CrashLogger.readAndClear(context)) }
+
     val discoveredVoicesCount = remember {
         runCatching { VoiceAzkarPlayer.discoverRawVoiceResIds(context).size }.getOrDefault(0)
     }
@@ -392,9 +226,6 @@ fun AtharMuslimApp(
         selectedAzkarCategory?.let { AzkarRepository.getAzkarByCategory(context, it.key) }.orEmpty()
     }
     val duasList = remember { AzkarRepository.getDuas(context) }
-    val activeActionCards = remember(activeHomeAction) {
-        activeHomeAction?.let { buildItemsForHomeAction(it) }.orEmpty()
-    }
     val countsMap = remember { mutableStateMapOf<Int, Int>() }
 
     fun saveCountForItem(itemId: Int, value: Int) {
@@ -502,6 +333,51 @@ fun AtharMuslimApp(
         ) {
             permissionStepState.value = PermissionPromptStep.EXACT_ALARM
         }
+    }
+
+    val pendingCrash = crashReportState.value
+    if (pendingCrash != null) {
+        AlertDialog(
+            onDismissRequest = { crashReportState.value = null },
+            containerColor = scheme.surface,
+            shape = RoundedCornerShape(22.dp),
+            title = {
+                Text(
+                    text = "توقف التطبيق في المرة السابقة",
+                    color = scheme.onSurface,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 16.sp
+                )
+            },
+            text = {
+                Text(
+                    text = pendingCrash.take(700),
+                    color = scheme.onBackground,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        runCatching {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("crash", pendingCrash))
+                            Toast.makeText(context, "تم نسخ تقرير الخطأ", Toast.LENGTH_SHORT).show()
+                        }
+                        crashReportState.value = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = scheme.primary)
+                ) {
+                    Text("نسخ التقرير", color = scheme.onPrimary, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { crashReportState.value = null }) {
+                    Text("إغلاق", color = scheme.onSurface)
+                }
+            }
+        )
     }
 
     if (showExitDialogState.value) {
@@ -702,22 +578,23 @@ fun AtharMuslimApp(
                 .padding(innerPadding)
         ) {
             if (activeHomeAction != null) {
-                ItemsCardsList(
-                    items = activeActionCards,
-                    countsMap = countsMap,
-                    isZikrMode = activeHomeAction == HomeQuickAction.TASBIH,
+                HomeActionContent(
+                    action = activeHomeAction,
                     soundEnabled = soundEnabled,
                     vibrationEnabled = vibrationEnabled,
-                    fontScaleStep = fontScaleStep,
-                    onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
+                    favoriteIds = favoriteQuranIds.value,
+                    onToggleFavoriteAyah = { id -> toggleFavoriteAyah(id) },
+                    onOpenMorningAzkar = {
+                        activeHomeActionState.value = null
+                        selectedTabState.value = MainBottomTab.AZKAR
+                        selectedAzkarCategoryState.value = AzkarSubCategory.MORNING
+                    }
                 )
-                return@Box
-            }
-
+            } else {
             when (selectedTab) {
                 MainBottomTab.HOME -> {
                     HomeDashboardScreen(
-                        favoritesCount = 0,
+                        favoritesCount = favoriteQuranIds.value.size,
                         lastReadingTitle = lastReadingTitle,
                         lastReadingAction = lastReadingAction,
                         soundEnabled = soundEnabled,
@@ -853,6 +730,7 @@ fun AtharMuslimApp(
                         onBackToHome = { selectedTabState.value = MainBottomTab.HOME }
                     )
                 }
+            }
             }
         }
     }
@@ -1028,5 +906,50 @@ private fun ItemsCardsList(
                 fontScaleStep = fontScaleStep
             )
         }
+    }
+}
+
+@Composable
+private fun HomeActionContent(
+    action: HomeQuickAction,
+    soundEnabled: Boolean,
+    vibrationEnabled: Boolean,
+    favoriteIds: Set<Int>,
+    onToggleFavoriteAyah: (Int) -> Unit,
+    onOpenMorningAzkar: () -> Unit
+) {
+    when (action) {
+        HomeQuickAction.QURAN -> QuickToolScreen(
+            page = QuickToolPage.QURAN,
+            soundEnabled = soundEnabled,
+            hapticEnabled = vibrationEnabled,
+            favoriteQuranIds = favoriteIds,
+            onToggleFavoriteQuranAyah = onToggleFavoriteAyah,
+            onOpenMorningAzkar = onOpenMorningAzkar
+        )
+        HomeQuickAction.AUDIO -> QuickToolScreen(
+            page = QuickToolPage.AUDIO,
+            soundEnabled = soundEnabled,
+            hapticEnabled = vibrationEnabled,
+            onOpenMorningAzkar = onOpenMorningAzkar
+        )
+        HomeQuickAction.PRAYER -> QuickToolScreen(
+            page = QuickToolPage.PRAYER_GUIDE,
+            soundEnabled = soundEnabled,
+            hapticEnabled = vibrationEnabled,
+            onOpenMorningAzkar = onOpenMorningAzkar
+        )
+        HomeQuickAction.TASBIH -> QuickToolScreen(
+            page = QuickToolPage.TASBIH,
+            soundEnabled = soundEnabled,
+            hapticEnabled = vibrationEnabled,
+            onOpenMorningAzkar = onOpenMorningAzkar
+        )
+        HomeQuickAction.QIBLA -> QiblaCompassScreen()
+        HomeQuickAction.HADITH -> HadithScreen(
+            soundEnabled = soundEnabled,
+            vibrationEnabled = vibrationEnabled
+        )
+        else -> Unit
     }
 }
