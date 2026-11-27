@@ -75,6 +75,7 @@ import com.athar.muslim.ui.components.ZikrCard
 import com.athar.muslim.ui.screens.FavoritesScreen
 import com.athar.muslim.ui.screens.HadithScreen
 import com.athar.muslim.ui.screens.HomeDashboardScreen
+import com.athar.muslim.ui.screens.MushafReaderScreen
 import com.athar.muslim.ui.screens.QiblaCompassScreen
 import com.athar.muslim.ui.screens.QuickToolPage
 import com.athar.muslim.ui.screens.QuickToolScreen
@@ -948,13 +949,11 @@ private fun HomeActionContent(
     onOpenMorningAzkar: () -> Unit
 ) {
     when (action) {
-        HomeQuickAction.QURAN -> QuickToolScreen(
-            page = QuickToolPage.QURAN,
+        HomeQuickAction.QURAN -> MushafReaderScreen(
             soundEnabled = soundEnabled,
             hapticEnabled = vibrationEnabled,
-            favoriteQuranIds = favoriteQuranIds,
-            onToggleFavoriteQuranAyah = onToggleFavoriteAyah,
-            onOpenMorningAzkar = onOpenMorningAzkar
+            favoriteIds = favoriteIds,
+            onToggleFavorite = onToggleFavorite
         )
         HomeQuickAction.AUDIO -> QuickToolScreen(
             page = QuickToolPage.AUDIO,
