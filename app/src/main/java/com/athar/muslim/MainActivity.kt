@@ -72,6 +72,7 @@ import com.athar.muslim.ui.components.SkyBottomBar
 import com.athar.muslim.ui.components.SkyHeaderDecor
 import com.athar.muslim.ui.components.SoundHelper
 import com.athar.muslim.ui.components.ZikrCard
+import com.athar.muslim.ui.screens.FavoritesScreen
 import com.athar.muslim.ui.screens.HadithScreen
 import com.athar.muslim.ui.screens.HomeDashboardScreen
 import com.athar.muslim.ui.screens.QiblaCompassScreen
@@ -82,6 +83,7 @@ import com.athar.muslim.ui.screens.buttons.HomeQuickAction
 import com.athar.muslim.ui.theme.AppThemePreset
 import com.athar.muslim.ui.theme.AtharMuslimTheme
 import com.athar.muslim.util.CrashLogger
+import com.athar.muslim.util.FavoritesStore
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -197,22 +199,26 @@ fun AtharMuslimApp(
         }
     }
 
-    val favoriteQuranIds = remember {
-        mutableStateOf(
-            runCatching {
-                prefs.getStringSet("quran_fav_ids", emptySet()).orEmpty()
-                    .mapNotNull { it.toIntOrNull() }.toSet()
-            }.getOrDefault(emptySet())
-        )
-    }
+    val favoriteQuranIds = remember { mutableStateOf<Set<Int>>(emptySet()) }
 
     fun toggleFavoriteAyah(id: Int) {
+        // مفضلة الآيات القديمة (غير مستخدمة بعد قارئ المصحف الجديد)
         val current = favoriteQuranIds.value
-        val updated = if (current.contains(id)) current - id else current + id
-        favoriteQuranIds.value = updated
-        runCatching {
-            prefs.edit().putStringSet("quran_fav_ids", updated.map { it.toString() }.toSet()).apply()
+        favoriteQuranIds.value = if (current.contains(id)) current - id else current + id
+    }
+
+    val favoriteItems = remember { mutableStateOf(FavoritesStore.load(prefs)) }
+    val favoriteIds = favoriteItems.value.map { it.id }.toSet()
+
+    fun toggleFavorite(item: ZikrItem) {
+        val current = favoriteItems.value
+        val updated = if (current.any { it.id == item.id }) {
+            current.filter { it.id != item.id }
+        } else {
+            listOf(item) + current
         }
+        favoriteItems.value = updated
+        FavoritesStore.save(prefs, updated)
     }
 
     val crashReportState = remember { mutableStateOf(CrashLogger.readAndClear(context)) }
@@ -542,6 +548,7 @@ fun AtharMuslimApp(
                 val done = duasList.count { (countsMap[it.id] ?: it.count) <= 0 }
                 "الأدعية المختارة ($done/${duasList.size})"
             }
+            MainBottomTab.FAVORITES -> "المفضلة (${favoriteItems.value.size})"
             MainBottomTab.SETTINGS -> "الضبط والإعدادات"
         }
 
@@ -582,8 +589,10 @@ fun AtharMuslimApp(
                     action = activeHomeAction,
                     soundEnabled = soundEnabled,
                     vibrationEnabled = vibrationEnabled,
-                    favoriteIds = favoriteQuranIds.value,
+                    favoriteQuranIds = favoriteQuranIds.value,
                     onToggleFavoriteAyah = { id -> toggleFavoriteAyah(id) },
+                    favoriteIds = favoriteIds,
+                    onToggleFavorite = { item -> toggleFavorite(item) },
                     onOpenMorningAzkar = {
                         activeHomeActionState.value = null
                         selectedTabState.value = MainBottomTab.AZKAR
@@ -594,7 +603,7 @@ fun AtharMuslimApp(
             when (selectedTab) {
                 MainBottomTab.HOME -> {
                     HomeDashboardScreen(
-                        favoritesCount = favoriteQuranIds.value.size,
+                        favoritesCount = favoriteItems.value.size,
                         lastReadingTitle = lastReadingTitle,
                         lastReadingAction = lastReadingAction,
                         soundEnabled = soundEnabled,
@@ -657,6 +666,8 @@ fun AtharMuslimApp(
                             soundEnabled = soundEnabled,
                             vibrationEnabled = vibrationEnabled,
                             fontScaleStep = fontScaleStep,
+                            favoriteIds = favoriteIds,
+                            onToggleFavorite = { item -> toggleFavorite(item) },
                             onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
                         )
                     }
@@ -670,7 +681,18 @@ fun AtharMuslimApp(
                         soundEnabled = soundEnabled,
                         vibrationEnabled = vibrationEnabled,
                         fontScaleStep = fontScaleStep,
+                        favoriteIds = favoriteIds,
+                        onToggleFavorite = { item -> toggleFavorite(item) },
                         onSaveCount = { id, newVal -> saveCountForItem(id, newVal) }
+                    )
+                }
+
+                MainBottomTab.FAVORITES -> {
+                    FavoritesScreen(
+                        items = favoriteItems.value,
+                        soundEnabled = soundEnabled,
+                        vibrationEnabled = vibrationEnabled,
+                        onToggleFavorite = { item -> toggleFavorite(item) }
                     )
                 }
 
@@ -879,13 +901,15 @@ private fun ItemsCardsList(
     soundEnabled: Boolean,
     vibrationEnabled: Boolean,
     fontScaleStep: Int,
+    favoriteIds: Set<Int>,
+    onToggleFavorite: (ZikrItem) -> Unit,
     onSaveCount: (Int, Int) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = if (isZikrMode) 16.dp else 14.dp),
-        verticalArrangement = Arrangement.spacedBy(if (isZikrMode) 10.dp else 14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(top = 6.dp, bottom = 18.dp)
     ) {
         items(items, key = { zikrEntry -> zikrEntry.id }) { zikrEntry ->
@@ -901,6 +925,9 @@ private fun ItemsCardsList(
                     }
                 },
                 isZikrMode = isZikrMode,
+                isFavorite = favoriteIds.contains(zikrEntry.id),
+                showFavoriteButton = true,
+                onToggleFavorite = { onToggleFavorite(zikrEntry) },
                 soundEnabled = soundEnabled,
                 vibrationEnabled = vibrationEnabled,
                 fontScaleStep = fontScaleStep
@@ -914,8 +941,10 @@ private fun HomeActionContent(
     action: HomeQuickAction,
     soundEnabled: Boolean,
     vibrationEnabled: Boolean,
-    favoriteIds: Set<Int>,
+    favoriteQuranIds: Set<Int>,
     onToggleFavoriteAyah: (Int) -> Unit,
+    favoriteIds: Set<Int>,
+    onToggleFavorite: (ZikrItem) -> Unit,
     onOpenMorningAzkar: () -> Unit
 ) {
     when (action) {
@@ -923,7 +952,7 @@ private fun HomeActionContent(
             page = QuickToolPage.QURAN,
             soundEnabled = soundEnabled,
             hapticEnabled = vibrationEnabled,
-            favoriteQuranIds = favoriteIds,
+            favoriteQuranIds = favoriteQuranIds,
             onToggleFavoriteQuranAyah = onToggleFavoriteAyah,
             onOpenMorningAzkar = onOpenMorningAzkar
         )
@@ -948,7 +977,9 @@ private fun HomeActionContent(
         HomeQuickAction.QIBLA -> QiblaCompassScreen()
         HomeQuickAction.HADITH -> HadithScreen(
             soundEnabled = soundEnabled,
-            vibrationEnabled = vibrationEnabled
+            vibrationEnabled = vibrationEnabled,
+            favoriteIds = favoriteIds,
+            onToggleFavorite = onToggleFavorite
         )
         else -> Unit
     }
