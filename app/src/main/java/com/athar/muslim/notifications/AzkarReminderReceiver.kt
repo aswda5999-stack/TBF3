@@ -16,6 +16,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.athar.muslim.MainActivity
+import com.athar.muslim.R
 import com.athar.muslim.audio.VoiceAzkarPlayer
 import com.athar.muslim.model.AzkarSubCategory
 import com.athar.muslim.model.VoiceReminderIntensity
@@ -66,7 +67,7 @@ class AzkarReminderReceiver : BroadcastReceiver() {
                 )
 
                 val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                    .setSmallIcon(android.R.drawable.ic_popup_reminder)
+                    .setSmallIcon(R.drawable.ic_stat_mosque)
                     .setContentTitle("أثر مسلم • ${category.title}")
                     .setContentText(category.subtitle)
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -119,7 +120,7 @@ class AzkarReminderReceiver : BroadcastReceiver() {
 
         fun scheduleAllDailyReminders(context: Context) {
             ensureNotificationChannel(context)
-            AzkarSubCategory.entries.forEach { category ->
+            AzkarSubCategory.entries.filter { it.reminderHour >= 0 }.forEach { category ->
                 scheduleCategoryReminder(context, category)
             }
             val prefs = context.getSharedPreferences("athar_muslim_prefs", Context.MODE_PRIVATE)
