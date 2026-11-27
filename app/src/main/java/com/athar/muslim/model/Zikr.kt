@@ -4,6 +4,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FlightTakeoff
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Mosque
 import androidx.compose.material.icons.rounded.WbSunny
@@ -65,6 +68,38 @@ enum class AzkarSubCategory(
         subtitle = "تسبيح واستغفار وتهليل",
         icon = Icons.Rounded.MenuBook,
         reminderHour = 10,
+        reminderMinute = 0
+    ),
+    WAKEUP(
+        key = "wakeup",
+        title = "أذكار الاستيقاظ",
+        subtitle = "عند الاستيقاظ من النوم",
+        icon = Icons.Rounded.WbSunny,
+        reminderHour = -1,
+        reminderMinute = 0
+    ),
+    HOME(
+        key = "home",
+        title = "المنزل والمسجد",
+        subtitle = "الخروج والدخول والمسجد والخلاء",
+        icon = Icons.Rounded.Home,
+        reminderHour = -1,
+        reminderMinute = 0
+    ),
+    TRAVEL(
+        key = "travel",
+        title = "أذكار السفر",
+        subtitle = "دعاء السفر والنزول",
+        icon = Icons.Rounded.FlightTakeoff,
+        reminderHour = -1,
+        reminderMinute = 0
+    ),
+    FOOD(
+        key = "food",
+        title = "أذكار الطعام",
+        subtitle = "قبل الأكل وبعده",
+        icon = Icons.Rounded.Restaurant,
+        reminderHour = -1,
         reminderMinute = 0
     )
 }
