@@ -19,7 +19,7 @@ object AzkarRepository {
 
     fun getAllAzkar(context: Context): List<ZikrItem> {
         val keys = listOf(
-            "morning", "evening", "sleep", "prayer",
+            "morning", "evening", "sleep", "prayer", "general",
             "wakeup", "home", "travel", "food"
         )
         return keys.flatMap { getAzkarByCategory(context, it) }
@@ -39,7 +39,7 @@ object AzkarRepository {
 
     private fun loadCategoryFile(context: Context, categoryKey: String): List<ZikrItem> {
         val list = mutableListOf<ZikrItem>()
-        val fileName = "azkar_${categoryKey}.json"
+        val fileName = if (categoryKey == "general") "azkar.json" else "azkar_${categoryKey}.json"
         try {
             val jsonString = context.assets.open(fileName).bufferedReader().use { it.readText() }
             val array = JSONArray(jsonString)
