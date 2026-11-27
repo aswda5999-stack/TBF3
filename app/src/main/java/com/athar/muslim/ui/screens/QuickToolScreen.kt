@@ -74,11 +74,9 @@ fun QuickToolScreen(
     modifier: Modifier = Modifier
 ) {
     if (page == QuickToolPage.QURAN) {
-        QuranReaderScreen(
+        MushafReaderScreen(
             soundEnabled = soundEnabled,
             hapticEnabled = hapticEnabled,
-            favoriteIds = favoriteQuranIds,
-            onToggleFavoriteAyah = onToggleFavoriteQuranAyah,
             modifier = modifier
         )
     } else {
