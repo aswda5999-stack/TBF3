@@ -81,9 +81,25 @@ fun QuickToolScreen(
             onToggleFavoriteAyah = onToggleFavoriteQuranAyah,
             modifier = modifier
         )
-        return
+    } else {
+        QuickToolContent(
+            page = page,
+            soundEnabled = soundEnabled,
+            hapticEnabled = hapticEnabled,
+            onOpenMorningAzkar = onOpenMorningAzkar,
+            modifier = modifier
+        )
     }
+}
 
+@Composable
+private fun QuickToolContent(
+    page: QuickToolPage,
+    soundEnabled: Boolean,
+    hapticEnabled: Boolean,
+    onOpenMorningAzkar: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
     val view = LocalView.current

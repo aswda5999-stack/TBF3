@@ -70,7 +70,9 @@ import com.athar.muslim.data.KingFahadQuranRepository
 import com.athar.muslim.model.QuranAyah
 import com.athar.muslim.model.QuranSurahMeta
 import com.athar.muslim.ui.components.SoundHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -140,7 +142,23 @@ fun QuranReaderScreen(
             }
         }
     }
-    val surahAyahs = remember(activeSurahNumber) {
+    val loadTickState = remember { mutableIntStateOf(0) }
+    val loadingSurahState = remember { mutableStateOf(false) }
+    val loadTick = loadTickState.intValue
+    val isLoadingSurah = loadingSurahState.value
+
+    LaunchedEffect(activeSurahNumber) {
+        if (activeSurahNumber > 0 && !KingFahadQuranRepository.isSurahReady(activeSurahNumber)) {
+            loadingSurahState.value = true
+            withContext(Dispatchers.IO) {
+                runCatching { KingFahadQuranRepository.ensureSurahLoaded(context, activeSurahNumber) }
+            }
+            loadTickState.intValue = loadTickState.intValue + 1
+            loadingSurahState.value = false
+        }
+    }
+
+    val surahAyahs = remember(activeSurahNumber, loadTick) {
         if (activeSurahNumber > 0) {
             runCatching { KingFahadQuranRepository.getAyahsForSurah(activeSurahNumber) }.getOrElse { emptyList() }
         } else {
@@ -344,6 +362,17 @@ fun QuranReaderScreen(
                             }
                         )
                     }
+                }
+            } else if (isLoadingSurah) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "جاري تحميل السورة…",
+                        color = secondaryText,
+                        fontSize = 14.sp
+                    )
                 }
             } else {
                 LazyColumn(
